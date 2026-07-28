@@ -18,6 +18,7 @@
 #include <boost/uuid/detail/sha1.hpp>
 #endif
 
+#include <cstddef>
 #include <vector>
 #include <string>
 #include <iostream>
@@ -38,7 +39,7 @@ class Sha1
 {
     public:
         virtual ~Sha1(){}
-        Sha1() : sha1(), up_to_date(false), hash{0,0,0,0,0}
+        Sha1() : sha1(), up_to_date(false), hash()
         {}
 
         template<typename T> void append(const std::vector<T>&v)
@@ -70,22 +71,31 @@ class Sha1
 
         friend std::ostream & operator<<(std::ostream& os, Sha1& sha1)
         {
-            unsigned int hash[5]={0};
-            sha1.get(hash);
-            return os << std::hex << std::setfill('0')
-                      << std::setw(8) << std::setprecision(8) << hash[0]<< hash[1]<< hash[2]<< hash[3]<< hash[4];
+            boost::uuids::detail::sha1::digest_type h;
+            sha1.get(h);
+            // digest_type is unsigned int[5] up to Boost 1.85 and unsigned char[20] from 1.86.
+            // Deriving both the element count and the hex width from the type emits the same
+            // 40 characters either way. setw is not sticky, hence re-applying it each pass.
+            const std::size_t n = sizeof(h)/sizeof(h[0]);
+            const int width = 2*static_cast<int>(sizeof(h[0]));
+            os << std::hex << std::setfill('0');
+            for (std::size_t i=0;i<n;++i)
+            {
+                os << std::setw(width) << static_cast<unsigned int>(h[i]);
+            }
+            return os;
         }
 
     protected:
         boost::uuids::detail::sha1 sha1;
         bool up_to_date;
-        unsigned int hash[5];
+        boost::uuids::detail::sha1::digest_type hash;
 
     private:
-        void get(unsigned int sha1_hash[5])
+        void get(boost::uuids::detail::sha1::digest_type& sha1_hash)
         {
             if (not up_to_date) update();
-            for (size_t i=0;i<5;++i)
+            for (std::size_t i=0;i<sizeof(hash)/sizeof(hash[0]);++i)
             {
                 sha1_hash[i]=hash[i];
             }
