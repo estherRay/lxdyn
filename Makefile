@@ -283,8 +283,13 @@ windows_gccx_posix: cmake-windows-target build-windows test-windows
 code/yaml-cpp/CMakeLists.txt:
 	@git submodule update --init code/yaml-cpp
 
+# websocketpp patched for modern Boost.Asio, kept out of SSC. Provisioned but not yet built
+# against: see code/cmake/CMakeWebSocketPP.cmake
+code/websocketpp/CMakeLists.txt:
+	@git submodule update --init code/websocketpp
 
-cmake-windows-target: code/yaml-cpp/CMakeLists.txt
+
+cmake-windows-target: code/yaml-cpp/CMakeLists.txt code/websocketpp/CMakeLists.txt
 	docker pull $(DOCKER_IMAGE) || true
 	$(DOCKER_AS_USER) $(DOCKER_IMAGE) /bin/bash -c \
 	   "cd /opt/share &&\
@@ -335,7 +340,7 @@ test-windows:
 
 
 cmake-debian-target: SHELL:=/bin/bash
-cmake-debian-target: code/yaml-cpp/CMakeLists.txt
+cmake-debian-target: code/yaml-cpp/CMakeLists.txt code/websocketpp/CMakeLists.txt
 	docker pull $(DOCKER_IMAGE) || true
 	$(DOCKER_AS_USER) $(DOCKER_IMAGE) /bin/bash -c \
 	   "cd /opt/share &&\
@@ -384,7 +389,7 @@ test-debian:
 	    fi && \
 	    ldd run_all_tests"
 
-cmake-ubuntu-intel-target: code/yaml-cpp/CMakeLists.txt
+cmake-ubuntu-intel-target: code/yaml-cpp/CMakeLists.txt code/websocketpp/CMakeLists.txt
 	docker pull $(DOCKER_IMAGE) || true
 	$(DOCKER_AS_USER) $(DOCKER_IMAGE) /bin/bash -c \
 	   "source /opt/intel/oneapi/setvars.sh && \

@@ -8,3 +8,6 @@
 [submodule "code/yaml-cpp"]
 	path = code/yaml-cpp
 	url = https://github.com/jbeder/yaml-cpp
+[submodule "code/websocketpp"]
+	path = code/websocketpp
+	url = https://github.com/LocutusOfBorg/websocketpp.git
