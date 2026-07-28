@@ -11,7 +11,11 @@ IF(NOT DEFINED CMAKE_BUILD_TYPE)
     SET(CMAKE_BUILD_TYPE Debug)
 ENDIF()
 
-SET(CMAKE_CXX_STANDARD 11)
+SET(CMAKE_CXX_STANDARD 17)
+# SSC's f2c output relies on unprototyped function pointers (f2c.h: typedef doublereal (*D_fp)()).
+# C23 reads an empty parameter list as (void), which turns every call through them into an error,
+# and GCC 15 defaults to gnu23. SSC is never modified, so the standard is pinned instead.
+SET(CMAKE_C_STANDARD 17)
 
 IF(CMAKE_SIZEOF_VOID_P EQUAL 8)
    SET(ARCH64_BITS TRUE)

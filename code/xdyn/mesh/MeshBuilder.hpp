@@ -8,7 +8,7 @@
 
 struct Vector3dComparator
 {
-    bool operator() (const EPoint& lhs, const EPoint& rhs)
+    bool operator() (const EPoint& lhs, const EPoint& rhs) const
     {
         if (MESH_LT(lhs(0),rhs(0))) {return true;}
         if (MESH_EQ(lhs(0),rhs(0)))
@@ -40,7 +40,7 @@ struct Edge
 
 struct EdgeComparator
 {
-    bool operator() (const Edge& lhs, const Edge& rhs)
+    bool operator() (const Edge& lhs, const Edge& rhs) const
     {
         size_t i1 = std::min(lhs.vertex_index[0],lhs.vertex_index[1]);
         size_t i2 = std::max(lhs.vertex_index[0],lhs.vertex_index[1]);
