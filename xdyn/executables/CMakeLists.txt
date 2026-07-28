@@ -12,7 +12,7 @@ INCLUDE_DIRECTORIES(SYSTEM ${PROTOBUF_INCLUDE_DIR})
 INCLUDE_DIRECTORIES(SYSTEM ${GRPC_INCLUDE_DIR})
 INCLUDE_DIRECTORIES(SYSTEM ${THIRDPARTY_CODE_INCLUDE_DIR})
 
-SET(cosimulation_proto ${CMAKE_CURRENT_SOURCE_DIR}/../../../interfaces/proto/cosimulation.proto)
+SET(cosimulation_proto ${CMAKE_SOURCE_DIR}/interfaces/proto/cosimulation.proto)
 SET(cosimulation_proto_srcs "${CMAKE_CURRENT_BINARY_DIR}/cosimulation.pb.cc")
 SET(cosimulation_proto_hdrs "${CMAKE_CURRENT_BINARY_DIR}/cosimulation.pb.h")
 SET(cosimulation_grpc_srcs "${CMAKE_CURRENT_BINARY_DIR}/cosimulation.grpc.pb.cc")
@@ -28,7 +28,7 @@ ADD_CUSTOM_COMMAND(
          "${PROTOC_PREFIX}${cosimulation_proto}"
     DEPENDS "${cosimulation_proto}")
 
-SET(model_exchange_proto ${CMAKE_CURRENT_SOURCE_DIR}/../../../interfaces/proto/model_exchange.proto)
+SET(model_exchange_proto ${CMAKE_SOURCE_DIR}/interfaces/proto/model_exchange.proto)
 SET(model_exchange_proto_srcs "${CMAKE_CURRENT_BINARY_DIR}/model_exchange.pb.cc")
 SET(model_exchange_proto_hdrs "${CMAKE_CURRENT_BINARY_DIR}/model_exchange.pb.h")
 SET(model_exchange_grpc_srcs "${CMAKE_CURRENT_BINARY_DIR}/model_exchange.grpc.pb.cc")
@@ -306,9 +306,9 @@ ENDIF()
 
 INSTALL(
     FILES
-        ${CMAKE_CURRENT_SOURCE_DIR}/../../../postprocessing/Python/plot.py
-        ${CMAKE_CURRENT_SOURCE_DIR}/../../../postprocessing/Python/animate.py
-        ${CMAKE_CURRENT_SOURCE_DIR}/../../../postprocessing/Python/waveYamlToCsv.py
+        ${CMAKE_SOURCE_DIR}/postprocessing/Python/plot.py
+        ${CMAKE_SOURCE_DIR}/postprocessing/Python/animate.py
+        ${CMAKE_SOURCE_DIR}/postprocessing/Python/waveYamlToCsv.py
     DESTINATION demos)
 
 INSTALL(

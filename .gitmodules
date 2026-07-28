@@ -1,16 +1,16 @@
 	
-[submodule "code/ssc"]
-	path = code/ssc
+[submodule "external/ssc"]
+	path = external/ssc
 	url = ../scientific_computing
 [submodule "interfaces"]
 	path = interfaces
 	url = ../interfaces
 [submodule "code/yaml-cpp"]
-	path = code/yaml-cpp
+	path = external/yaml-cpp
 	url = https://github.com/jbeder/yaml-cpp
-[submodule "code/websocketpp"]
-	path = code/websocketpp
+[submodule "external/websocketpp"]
+	path = external/websocketpp
 	url = https://github.com/LocutusOfBorg/websocketpp.git
 [submodule "code/eigen3-hdf5"]
-	path = code/eigen3-hdf5
+	path = external/eigen3-hdf5
 	url = https://github.com/garrison/eigen3-hdf5.git

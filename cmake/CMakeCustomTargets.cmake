@@ -5,14 +5,14 @@ ADD_CUSTOM_TARGET(
     COMMENT "Evaluates the amount of work of the project"
 )
 
-INSTALL(DIRECTORY "${PROJECT_SOURCE_DIR}/../postprocessing/MatLab/" DESTINATION "matlab")
+INSTALL(DIRECTORY "${CMAKE_SOURCE_DIR}/postprocessing/MatLab/" DESTINATION "matlab")
 
 MESSAGE(STATUS "Related xdyn proto files will be installed in proto directory")
-INSTALL(FILES "${PROJECT_SOURCE_DIR}/../interfaces/proto/controller.proto" DESTINATION "proto")
-INSTALL(FILES "${PROJECT_SOURCE_DIR}/../interfaces/proto/cosimulation.proto" DESTINATION "proto")
-INSTALL(FILES "${PROJECT_SOURCE_DIR}/../interfaces/proto/model_exchange.proto" DESTINATION "proto")
-INSTALL(FILES "${PROJECT_SOURCE_DIR}/../interfaces/proto/force.proto" DESTINATION "proto")
-INSTALL(FILES "${PROJECT_SOURCE_DIR}/../interfaces/proto/wave_grpc.proto" DESTINATION "proto")
+INSTALL(FILES "${CMAKE_SOURCE_DIR}/interfaces/proto/controller.proto" DESTINATION "proto")
+INSTALL(FILES "${CMAKE_SOURCE_DIR}/interfaces/proto/cosimulation.proto" DESTINATION "proto")
+INSTALL(FILES "${CMAKE_SOURCE_DIR}/interfaces/proto/model_exchange.proto" DESTINATION "proto")
+INSTALL(FILES "${CMAKE_SOURCE_DIR}/interfaces/proto/force.proto" DESTINATION "proto")
+INSTALL(FILES "${CMAKE_SOURCE_DIR}/interfaces/proto/wave_grpc.proto" DESTINATION "proto")
 
 FILE(GLOB script ${CMAKE_SOURCE_DIR}/integration_tests.py)
 ADD_CUSTOM_TARGET(python_script)

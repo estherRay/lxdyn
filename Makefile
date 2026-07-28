@@ -2,24 +2,24 @@
 
 all: update-submodules generate_proto headers
 
-HEADERS=code/ssc/ssc/check_ssc_version.hpp\
-        code/ssc/ssc/csv_file_reader.hpp\
-        code/ssc/ssc/data_source.hpp\
-        code/ssc/ssc/decode_unit.hpp\
-        code/ssc/ssc/exception_handling.hpp\
-        code/ssc/ssc/geometry.hpp\
-        code/ssc/ssc/integrate.hpp\
-        code/ssc/ssc/interpolation.hpp\
-        code/ssc/ssc/ipopt_interface.hpp\
-        code/ssc/ssc/json.hpp\
-        code/ssc/ssc/kinematics.hpp\
-        code/ssc/ssc/macros.hpp\
-        code/ssc/ssc/numeric.hpp\
-        code/ssc/ssc/random_data_generator.hpp\
-        code/ssc/ssc/solver.hpp\
-        code/ssc/ssc/text_file_reader.hpp\
-        code/ssc/ssc/websocket.hpp\
-        code/ssc/ssc/yaml_parser.hpp
+HEADERS=external/ssc/ssc/check_ssc_version.hpp\
+        external/ssc/ssc/csv_file_reader.hpp\
+        external/ssc/ssc/data_source.hpp\
+        external/ssc/ssc/decode_unit.hpp\
+        external/ssc/ssc/exception_handling.hpp\
+        external/ssc/ssc/geometry.hpp\
+        external/ssc/ssc/integrate.hpp\
+        external/ssc/ssc/interpolation.hpp\
+        external/ssc/ssc/ipopt_interface.hpp\
+        external/ssc/ssc/json.hpp\
+        external/ssc/ssc/kinematics.hpp\
+        external/ssc/ssc/macros.hpp\
+        external/ssc/ssc/numeric.hpp\
+        external/ssc/ssc/random_data_generator.hpp\
+        external/ssc/ssc/solver.hpp\
+        external/ssc/ssc/text_file_reader.hpp\
+        external/ssc/ssc/websocket.hpp\
+        external/ssc/ssc/yaml_parser.hpp
 
 headers: ${HEADERS}
 
@@ -33,7 +33,7 @@ update-submodules:
 
 ${HEADERS}:
 	@git submodule update --init --recursive
-	@cd code/ssc/ssc && sh generate_module_header.sh
+	@cd external/ssc/ssc && sh generate_module_header.sh
 
 generate_proto:
 	make -C interfaces build
@@ -41,7 +41,7 @@ generate_proto:
 clean:
 	@rm -rf build_*
 	@make -C doc clean
-	@make -C code/xdyn_wrapper_python clean
+	@make -C xdyn_wrapper_python clean
 
 changelog: CHANGELOG.md
 changelog: ## Generates CHANGELOG.md from git merge commits

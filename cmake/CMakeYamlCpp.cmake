@@ -2,8 +2,8 @@ SET(YAML_SKIP_INSTALL ON)
 SET(YAML_CPP_BUILD_TOOLS OFF CACHE BOOL "" FORCE)
 SET(YAML_CPP_BUILD_TESTS OFF CACHE BOOL "" FORCE)
 SET(YAML_CPP_FORMAT_SOURCE OFF CACHE BOOL "" FORCE)
-ADD_SUBDIRECTORY(yaml-cpp)
+ADD_SUBDIRECTORY(external/yaml-cpp)
 SET(YAML_CPP_INCLUDE_DIRS ${CMAKE_CURRENT_SOURCE_DIR}
-                          ${CMAKE_CURRENT_SOURCE_DIR}/yaml-cpp/include
-                          ${CMAKE_CURRENT_SOURCE_DIR}/yaml-cpp/include/yaml-cpp)
+                          ${CMAKE_CURRENT_SOURCE_DIR}/external/yaml-cpp/include
+                          ${CMAKE_CURRENT_SOURCE_DIR}/external/yaml-cpp/include/yaml-cpp)
 

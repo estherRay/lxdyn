@@ -2,7 +2,7 @@ IF(XDYN_NATIVE_BUILD)
     FIND_PACKAGE(Eigen3 REQUIRED)
     GET_TARGET_PROPERTY(eigen_INCLUDE_DIRS Eigen3::Eigen INTERFACE_INCLUDE_DIRECTORIES)
     # eigen3-hdf5 is header-only and not packaged anywhere; it is a submodule here
-    SET(eigen_hdf5_INCLUDE_DIRS ${CMAKE_CURRENT_SOURCE_DIR}/eigen3-hdf5)
+    SET(eigen_hdf5_INCLUDE_DIRS ${CMAKE_CURRENT_SOURCE_DIR}/external/eigen3-hdf5)
 ELSE()
     SET(eigen_INCLUDE_DIRS ${THIRD_PARTY_DIRECTORY}/eigen)
     SET(eigen_hdf5_INCLUDE_DIRS ${THIRD_PARTY_DIRECTORY}/eigen3-hdf5)

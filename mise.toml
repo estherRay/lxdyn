@@ -8,7 +8,7 @@ BUILD_TYPE = "Release"
 description = "Submodules, SSC umbrella headers, and CMake configure"
 run = """
 git submodule update --init --recursive
-cd code/ssc/ssc && sh generate_module_header.sh
+cd external/ssc/ssc && sh generate_module_header.sh
 """
 
 [tasks.configure]
@@ -16,7 +16,7 @@ description = "Configure the native CMake build"
 # Deliberately does not depend on setup: setup resets every submodule to its recorded pin,
 # which silently discards a local checkout you are in the middle of testing.
 run = """
-cmake -Wno-dev -G Ninja -S code -B build_native \
+cmake -Wno-dev -G Ninja -S . -B build_native \
   -D CMAKE_POLICY_VERSION_MINIMUM=3.5 \
   -D CMAKE_BUILD_TYPE=${BUILD_TYPE} \
   -D CMAKE_INSTALL_PREFIX:PATH=../install_native \
@@ -46,7 +46,7 @@ description = "Check for tabs in source files"
 run = """
 if grep --recursive --include='*.cpp' --include='*.c' --include='*.hpp' --include='*.h' \
         --exclude-dir=ssc --exclude-dir=yaml-cpp --exclude-dir=websocketpp \
-        --exclude-dir=eigen3-hdf5 --exclude-dir=thirdparty -P "\t" code/xdyn/ ; then
+        --exclude-dir=eigen3-hdf5 --exclude-dir=thirdparty -P "\t" xdyn/ ; then
     echo "Tabs found in the lines shown above."
     exit 1
 else
