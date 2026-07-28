@@ -61,83 +61,37 @@ how to deploy the project on a live system.
 
 ### Prerequisites
 
-To build xdyn, the easiest is to use [Docker](https://www.docker.com/).
-
-Depending on your platform, please refer to:
-
-- [Get Docker CE for CentOS](https://docs.docker.com/install/linux/docker-ce/centos/)
-- [Get Docker CE for Debian](https://docs.docker.com/install/linux/docker-ce/debian/)
-- [Get Docker CE for Fedora](https://docs.docker.com/install/linux/docker-ce/fedora/)
-- [Get Docker CE for Mac](https://docs.docker.com/docker-for-mac/install/)
-- [Install Docker for Windows](https://docs.docker.com/docker-for-windows/install/)
-
-You also need [make](https://en.wikipedia.org/wiki/Make_(software)).
+Building xdyn needs [Nix](https://nixos.org/download/) with flakes enabled. The
+`flake.nix` at the repository root pins the compiler and every dependency, so
+nothing else has to be installed.
 
 ### Installing
 
-Once Docker is installed, use:
-
 ```bash
-make
+nix develop
+mise run configure
+mise run build
 ```
 
-to build both the Windows & the Debian versions.
+The binaries can then be found in `build_native`.
 
-If you only want one of the two versions, you can use:
-
-```bash
-make debian
-```
-
-or
-
-```bash
-make windows
-```
-
-which performs a cross-compilation for Windows using GCC.
-
-The binaries can then be found in `build_windows` or `build_debian`,
-respectively.
-
-If you wish to build only part of the project, use:
-
-```bash
-./ninja_windows.sh package
-```
-
-for example, to build the Windows package (ZIP file containing the xdyn executable)
-
-or
-
-```bash
-./ninja_debian.sh run_all_tests
-```
-
-to rebuild the Debian tests.
-
-Once the build has finished, you can run the tests.
+`mise run configure` writes the CMake cache; you only need it again after
+changing the build configuration. `mise run build` on its own is enough
+afterwards.
 
 ## Running the tests
 
-To run the tests for Debian use:
-
 ```bash
-./run_all_tests_debian.sh
-```
-
-To run the Windows tests (using Wine in a Docker container) enter:
-
-```bash
-./run_all_tests_windows.sh
+mise run test
 ```
 
 The tests are written using Google test. These are both end-to-end tests and
 unit tests. The end-to-end tests can be a bit long so you can disable them
-using Google tests filters:
+using Google tests filters — all arguments after the executable are passed
+straight through:
 
 ```bash
-./run_all_tests_debian.sh --gtest_filter=-'*LONG*'
+cd build_native && ./run_all_tests --gtest_filter=-'*LONG*'
 ```
 
 All arguments after the script name are passed to the GTest executable. Please
@@ -146,9 +100,9 @@ options](https://github.com/google/googletest/blob/master/googletest/docs/advanc
 
 ## Running xdyn
 
-### Running xdyn on Windows
+### Running xdyn
 
-Compile xdyn (`make windows`), install the xdyn executable, then run:
+Build xdyn as above, then from `build_native/xdyn/executables` run:
 
 ```bash
 ./xdyn <yaml file> [xdyn options]
@@ -163,14 +117,9 @@ from the executables/demos folder, you can run:
 ./xdyn tutorial_01_falling_ball.yml --dt 0.1 --tend 1
 ```
 
-### Running xdyn on Debian
+### Running an installed xdyn
 
-Compile xdyn (`make debian`) and install the xdyn executable
-(`sudo dpkg -i xdyn.deb`).
-You'll also need to install libgfortran3 (for debian9) or
-libgfortran5 (for debian10).
-
-You can then run:
+After `mise run install` the executable is in `install_native`. You can then run:
 
 ```bash
 xdyn <yaml file> [xdyn options]
@@ -186,11 +135,10 @@ xdyn tutorial_01_falling_ball.yml --dt 0.1 --tend 1
 
 ### Running xdyn on Debian with Docker
 
-To create a Docker image containing xdyn, run:
+To create a Docker image containing xdyn, build the `.deb` and then:
 
 ```bash
-make debian
-make docker
+docker build . --tag xdyn
 ```
 
 To run the xdyn Docker container, use:
@@ -219,61 +167,41 @@ docker run -it --rm -w /usr/demos sirehna/xdyn tutorial_01_falling_ball.yml --dt
 
 ## Debugging
 
+Build a debug version first:
+
+```bash
+BUILD_TYPE=Debug mise run configure
+mise run build
+```
+
 ### Valgrind
 
 The memory analyzer [Valgrind](https://valgrind.org/) can be used during
-development to check for memory leaks and use of uninitialized values.
-To use it, first build a debug version (if you haven't already):
+development to check for memory leaks and use of uninitialized values:
 
 ```bash
-./ninja_debug.sh run_all_tests
+cd build_native && valgrind ./run_all_tests
 ```
 
-then run:
+Any [flag `run_all_tests` accepts](https://google.github.io/googletest/advanced.html#running-test-programs-advanced-options)
+can be passed through, in particular filtering:
 
 ```bash
-./run_all_tests_valgrind.sh
-```
-
-This script accepts any [flag `run_all_tests` does](https://gitlab.inria.fr/Phylophile/Treerecs/blob/f6551e06797b52819ba3e630b92315254a944da5/tests/gtest/googletest/docs/AdvancedGuide.md#running-test-programs-advanced-options), in particular filtering:
-
-```bash
-./run_all_tests_valgrind.sh --gtest_filter='Gravity*'
+cd build_native && valgrind ./run_all_tests --gtest_filter='Gravity*'
 ```
 
 ### GDB
 
-A script called `gdb.sh` can be used during development to launch `xdyn` or the
-unit tests under [GDB](https://www.gnu.org/software/gdb/).
-
-To debug xdyn, first build a debug version (if you haven't already):
+The binaries are native, so the host debugger works on them directly:
 
 ```bash
-./ninja_debug.sh xdyn
-```
-
-Then run:
-
-```bash
-./gdb.sh /build/executables/xdyn
+cd build_native && gdb ./xdyn/executables/xdyn
+cd build_native && gdb ./run_all_tests
 ```
 
 This will open a GDB prompt. To close it, press Ctrl+D. For more details on how
 to use GDB, refer to [the official GDB
 documentation](https://www.gnu.org/software/gdb/).
-
-To launch the debugger on the unit tests, first build a debug version (if you
-haven't already):
-
-```bash
-./ninja_debug.sh run_all_tests
-```
-
-Then run:
-
-```bash
-./gdb.sh run_all_tests
-```
 
 
 ## Deployment
