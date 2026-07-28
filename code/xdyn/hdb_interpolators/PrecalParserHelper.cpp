@@ -10,6 +10,7 @@
 #include <boost/algorithm/string.hpp>
 #include <boost/lexical_cast.hpp>
 #include <cstdio>
+#include <cstdlib>
 #include <fstream>
 #include <sstream>
 
@@ -504,9 +505,14 @@ struct UnitValue
             i++;
         }
         s = s.substr(i + 1, s.size());
-        char str[256];
-        sscanf(s.c_str(), "%lf%s", &val, str);
-        u = str;
+        // strtod, not sscanf("%lf%s") or istringstream: on "90.000deg" both of those
+        // treat the 'd'/'e' of the unit as hexfloat/exponent candidates and fail the
+        // whole conversion (UCRT scanf returns -1; libc++ num_get sets failbit) —
+        // value-with-unit suffixes only parse portably via strtod's longest-valid-prefix
+        // semantics.
+        char* unit_start = nullptr;
+        val = strtod(s.c_str(), &unit_start);
+        u = std::string(unit_start);
         return UnitValue(key, val, u);
     }
 
