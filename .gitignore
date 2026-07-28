@@ -1,12 +1,12 @@
+# Build trees. Every lane picks its own suffix; none of them is in-source.
 build
 build*32
 build*64
 build_deb*
 build_ubuntu*
 build_win*
-code/build_*
-code/yaml-cpp
 build_doc
+code/build_*
 install
 install*32
 install*64
@@ -16,29 +16,58 @@ gcc
 clang
 ssc_debian
 ssc_windows
+.zig-cache/
+*.o
+
+# yaml-cpp 0.3 is copied out of the docker image at configure time, never committed.
+code/yaml-cpp
+
+# Test droppings: run_all_tests and the tutorials write these into their cwd,
+# which is the repo root. The Makefile writes .dockerignore there too.
+#
+# ROOT-ANCHORED ON PURPOSE. Bare **.png / **.pptx / **.h5 also match the tracked
+# reference datasets under validation/ and integration_tests/ and the documentation
+# assets under doc/. Git keeps those because they are already tracked, but any new
+# sibling would silently vanish from `git status` -- which is how a reference dataset
+# gets lost without anyone noticing.
+/*.hdb
+/*.HDB
+/*.h5
+/*.hdf5
+/*.stl
+/*.csv
+/*.json
+/*.ini
+/*.png
+/*.pptx
+/*.log
+/.dockerignore
+!/.devcontainer.json
+
+# Generated documentation. Still blanket-matched: the pandoc/pweave lane writes next
+# to its sources rather than into an output directory, so there is nothing to anchor to.
+**.pdf
+**.html
+**.docx
+**.emf
+**.jpg
+**.jpeg
+**.bin
+
+# Packaging
+ssc.deb
+xdyn.deb
+*.tar.gz
+*.tgz
+*.bz2
+
+# Editors, IDEs, tooling
 .cproject
-.dockerignore
 .pydevproject
 .metadata
 .project
 .settings
 .vagrant
 *.swp
-*.tar.gz
-*.tgz
-*.bz2
-ssc.deb
-xdyn.deb
 __pycache__
-**.hdf5
-**.h5
-**.bin
-**.docx
-**.pdf
-**.pptx
-**.html
-**.png
-**.jpeg
-**.jpg
-**.emf
 .wine
