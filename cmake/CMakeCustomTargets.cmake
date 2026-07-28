@@ -1,6 +1,6 @@
 ADD_CUSTOM_TARGET(
     sloccount
-    sloccount `find . -maxdepth 1 -type d ! \\\( -name \".\" -o -name \"tools_ThirdParty\" -o -name \"doc\" -o -name \"data\" -o -name \"*bin*\" -o -name \".svn\" -o -name \".git\" -o -name \".settings\" \\\)`> "${PROJECT_BINARY_DIR}/sloccount.txt"
+    sloccount `find . -maxdepth 1 -type d ! \\\( -name \".\" -o -name \"tools_ThirdParty\" -o -name \"docs\" -o -name \"data\" -o -name \"*bin*\" -o -name \".svn\" -o -name \".git\" -o -name \".settings\" \\\)`> "${PROJECT_BINARY_DIR}/sloccount.txt"
     WORKING_DIRECTORY ${PROJECT_SOURCE_DIR}
     COMMENT "Evaluates the amount of work of the project"
 )
@@ -14,7 +14,7 @@ INSTALL(FILES "${CMAKE_SOURCE_DIR}/interfaces/proto/model_exchange.proto" DESTIN
 INSTALL(FILES "${CMAKE_SOURCE_DIR}/interfaces/proto/force.proto" DESTINATION "proto")
 INSTALL(FILES "${CMAKE_SOURCE_DIR}/interfaces/proto/wave_grpc.proto" DESTINATION "proto")
 
-FILE(GLOB script ${CMAKE_SOURCE_DIR}/integration_tests.py)
+FILE(GLOB script ${CMAKE_SOURCE_DIR}/integration_tests/integration_tests.py)
 ADD_CUSTOM_TARGET(python_script)
 ADD_CUSTOM_COMMAND(TARGET python_script POST_BUILD
                    COMMAND ${CMAKE_COMMAND} -E copy ${script}

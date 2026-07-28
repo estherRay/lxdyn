@@ -190,7 +190,7 @@ ENDIF()
 #############################################################################
 # Testing part
 
-INSTALL(FILES integration_tests.py
+INSTALL(FILES integration_tests/integration_tests.py
         DESTINATION ${RUNTIME_OUTPUT_DIRECTORY})
 
 SET(TEST_EXE run_all_tests)

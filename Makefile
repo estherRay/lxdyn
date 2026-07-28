@@ -1,4 +1,4 @@
-.PHONY: all headers update-submodules generate_proto clean changelog CHANGELOG.md
+.PHONY: all headers update-submodules generate_proto clean
 
 all: update-submodules generate_proto headers
 
@@ -40,11 +40,5 @@ generate_proto:
 
 clean:
 	@rm -rf build_*
-	@make -C doc clean
+	@make -C docs clean
 	@make -C xdyn_wrapper_python clean
-
-changelog: CHANGELOG.md
-changelog: ## Generates CHANGELOG.md from git merge commits
-CHANGELOG.md:
-	@make -C changelog
-	@cp changelog/$@ .

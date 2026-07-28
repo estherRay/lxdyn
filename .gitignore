@@ -7,7 +7,6 @@ build_ubuntu*
 build_win*
 build_doc
 build_native
-code/build_*
 install
 install_native
 install*32
@@ -26,7 +25,7 @@ ssc_windows
 #
 # ROOT-ANCHORED ON PURPOSE. Bare **.png / **.pptx / **.h5 also match the tracked
 # reference datasets under validation/ and integration_tests/ and the documentation
-# assets under doc/. Git keeps those because they are already tracked, but any new
+# assets under docs/. Git keeps those because they are already tracked, but any new
 # sibling would silently vanish from `git status` -- which is how a reference dataset
 # gets lost without anyone noticing.
 /*.hdb
@@ -41,7 +40,6 @@ ssc_windows
 /*.pptx
 /*.log
 /.dockerignore
-!/.devcontainer.json
 
 # Generated documentation. Still blanket-matched: the pandoc/pweave lane writes next
 # to its sources rather than into an output directory, so there is nothing to anchor to.

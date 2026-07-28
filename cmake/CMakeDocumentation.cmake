@@ -2,10 +2,10 @@
 FIND_PACKAGE(Doxygen)
 
 IF(DOXYGEN_FOUND)
-    CONFIGURE_FILE(${CMAKE_SOURCE_DIR}/Doxyfile.in ${CMAKE_CURRENT_BINARY_DIR}/Doxyfile @ONLY)
-    CONFIGURE_FILE(${CMAKE_SOURCE_DIR}/DoxygenLayout.in ${CMAKE_CURRENT_BINARY_DIR}/DoxygenLayout.xml @ONLY)
-    FILE(MAKE_DIRECTORY "${CMAKE_SOURCE_DIR}/doc/doxygen")
-    FILE(MAKE_DIRECTORY "${CMAKE_SOURCE_DIR}/doc/doxygen/html")
+    CONFIGURE_FILE(${CMAKE_SOURCE_DIR}/docs/Doxyfile.in ${CMAKE_CURRENT_BINARY_DIR}/Doxyfile @ONLY)
+    CONFIGURE_FILE(${CMAKE_SOURCE_DIR}/docs/DoxygenLayout.in ${CMAKE_CURRENT_BINARY_DIR}/DoxygenLayout.xml @ONLY)
+    FILE(MAKE_DIRECTORY "${CMAKE_SOURCE_DIR}/docs/doxygen")
+    FILE(MAKE_DIRECTORY "${CMAKE_SOURCE_DIR}/docs/doxygen/html")
     MESSAGE(STATUS "Adding doc_doxygen target")
     ADD_CUSTOM_TARGET(doc_doxygen
         ${DOXYGEN_EXECUTABLE} Doxyfile
