@@ -1,4 +1,9 @@
 #include "simulator_api.hpp"
+// builders.hpp must be visible before can_parse<T>() below instantiates the builders:
+// it declares the full specializations (e.g. WaveModelBuilder<Airy>). Without it the
+// primary template is implicitly instantiated here — an ODR violation that links by
+// luck on ELF (weak vs strong vtable) but is a duplicate-symbol error on COFF.
+#include "xdyn/listeners_and_controllers/builders.hpp"
 #include "xdyn/core/DefaultSurfaceElevation.hpp"
 #include "xdyn/core/SimulatorBuilder.hpp"
 #include "xdyn/core/SurfaceElevationFromWaves.hpp"

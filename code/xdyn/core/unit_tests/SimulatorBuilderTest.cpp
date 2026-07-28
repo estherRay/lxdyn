@@ -6,6 +6,9 @@
  */
 
 #include "SimulatorBuilderTest.hpp"
+// Specializations (e.g. SurfaceElevationBuilder<DefaultSurfaceElevation>) must be visible
+// before can_parse<T>() instantiates them — see the note in simulator_api.cpp.
+#include "xdyn/listeners_and_controllers/builders.hpp"
 #include "xdyn/core/DefaultSurfaceElevation.hpp"
 #include "xdyn/core/SimulatorBuilder.hpp"
 #include "xdyn/core/unit_tests/generate_body_for_tests.hpp"

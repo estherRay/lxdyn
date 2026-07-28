@@ -24,12 +24,18 @@ typedef TR1(shared_ptr)<SurfaceElevationInterface> SurfaceElevationInterfacePtr;
 typedef TR1(shared_ptr)<WaveSpectralDensity> WaveSpectralDensityPtr;
 typedef TR1(shared_ptr)<WaveDirectionalSpreading> WaveDirectionalSpreadingPtr;
 
+// The constructors below must accept exactly what SimulatorBuilder::can_parse<T>() passes
+// (same signature as the primary templates) and be defined inline: these specializations
+// are what can_parse actually constructs now that they are visible at the call site.
 template <>
 class SurfaceElevationBuilder<DefaultSurfaceElevation> : public SurfaceElevationBuilderInterface
 {
     public:
-        SurfaceElevationBuilder(const TR1(shared_ptr)<std::vector<DirectionalSpreadingBuilderPtr> >& directional_spreading_parsers_,
-                                const TR1(shared_ptr)<std::vector<SpectrumBuilderPtr> >& spectrum_parsers_);
+        SurfaceElevationBuilder(const TR1(shared_ptr)<std::vector<WaveModelBuilderPtr> >& wave_parsers_,
+                                const TR1(shared_ptr)<std::vector<DirectionalSpreadingBuilderPtr> >& directional_spreading_parsers_,
+                                const TR1(shared_ptr)<std::vector<SpectrumBuilderPtr> >& spectrum_parsers_) :
+            SurfaceElevationBuilderInterface(wave_parsers_, directional_spreading_parsers_, spectrum_parsers_)
+        {}
         boost::optional<SurfaceElevationInterfacePtr> try_to_parse(const std::string& model, const std::string& yaml) const;
 };
 
@@ -41,8 +47,11 @@ template <>
 class SurfaceElevationBuilder<SurfaceElevationFromWaves> : public SurfaceElevationBuilderInterface
 {
     public:
-        SurfaceElevationBuilder(const TR1(shared_ptr)<std::vector<DirectionalSpreadingBuilderPtr> >& directional_spreading_parsers_,
-                                const TR1(shared_ptr)<std::vector<SpectrumBuilderPtr> >& spectrum_parsers_);
+        SurfaceElevationBuilder(const TR1(shared_ptr)<std::vector<WaveModelBuilderPtr> >& wave_parsers_,
+                                const TR1(shared_ptr)<std::vector<DirectionalSpreadingBuilderPtr> >& directional_spreading_parsers_,
+                                const TR1(shared_ptr)<std::vector<SpectrumBuilderPtr> >& spectrum_parsers_) :
+            SurfaceElevationBuilderInterface(wave_parsers_, directional_spreading_parsers_, spectrum_parsers_)
+        {}
         boost::optional<SurfaceElevationInterfacePtr> try_to_parse(const std::string& model, const std::string& yaml) const;
 
     private:
@@ -60,7 +69,11 @@ template <>
 class SurfaceElevationBuilder<SurfaceElevationFromGRPC> : public SurfaceElevationBuilderInterface
 {
     public:
-        SurfaceElevationBuilder();
+        SurfaceElevationBuilder(const TR1(shared_ptr)<std::vector<WaveModelBuilderPtr> >& wave_parsers_,
+                                const TR1(shared_ptr)<std::vector<DirectionalSpreadingBuilderPtr> >& directional_spreading_parsers_,
+                                const TR1(shared_ptr)<std::vector<SpectrumBuilderPtr> >& spectrum_parsers_) :
+            SurfaceElevationBuilderInterface(wave_parsers_, directional_spreading_parsers_, spectrum_parsers_)
+        {}
         boost::optional<SurfaceElevationInterfacePtr> try_to_parse(const std::string& model, const std::string& yaml) const;
 };
 
@@ -68,7 +81,10 @@ template <>
 class WaveModelBuilder<Airy> : public WaveModelBuilderInterface
 {
     public:
-        WaveModelBuilder();
+        WaveModelBuilder(const TR1(shared_ptr)<std::vector<DirectionalSpreadingBuilderPtr> >& directional_spreading_parsers_,
+                         const TR1(shared_ptr)<std::vector<SpectrumBuilderPtr> >& spectrum_parsers_) :
+            WaveModelBuilderInterface(directional_spreading_parsers_, spectrum_parsers_)
+        {}
         boost::optional<WaveModelPtr> try_to_parse(const std::string& model, const DiscreteDirectionalWaveSpectrum& spectrum, const std::string& yaml) const;
         boost::optional<WaveModelPtr> try_to_parse(const std::string& model, const FlatDiscreteDirectionalWaveSpectrum& spectrum, const std::string& yaml) const;
 };
@@ -77,7 +93,7 @@ template <>
 class SpectrumBuilder<BretschneiderSpectrum> : public SpectrumBuilderInterface
 {
     public:
-        SpectrumBuilder();
+        SpectrumBuilder() : SpectrumBuilderInterface() {}
         boost::optional<WaveSpectralDensityPtr> try_to_parse(const std::string& model, const std::string& yaml) const;
 };
 
@@ -85,7 +101,7 @@ template <>
 class SpectrumBuilder<JonswapSpectrum> : public SpectrumBuilderInterface
 {
     public:
-        SpectrumBuilder();
+        SpectrumBuilder() : SpectrumBuilderInterface() {}
         boost::optional<WaveSpectralDensityPtr> try_to_parse(const std::string& model, const std::string& yaml) const;
 };
 
@@ -93,7 +109,7 @@ template <>
 class SpectrumBuilder<PiersonMoskowitzSpectrum> : public SpectrumBuilderInterface
 {
     public:
-        SpectrumBuilder();
+        SpectrumBuilder() : SpectrumBuilderInterface() {}
         boost::optional<WaveSpectralDensityPtr> try_to_parse(const std::string& model, const std::string& yaml) const;
 };
 
@@ -101,7 +117,7 @@ template <>
 class SpectrumBuilder<DiracSpectralDensity> : public SpectrumBuilderInterface
 {
     public:
-        SpectrumBuilder();
+        SpectrumBuilder() : SpectrumBuilderInterface() {}
         boost::optional<WaveSpectralDensityPtr> try_to_parse(const std::string& model, const std::string& yaml) const;
 };
 
