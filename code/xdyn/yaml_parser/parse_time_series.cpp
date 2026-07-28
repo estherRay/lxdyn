@@ -6,9 +6,10 @@
  */
 
 #include "parse_time_series.hpp"
+#include "yaml_compat.h"
 #include "xdyn/exceptions/InvalidInputException.hpp"
 
-#include <ssc/yaml_parser.hpp>
+#include "xdyn/yaml_parser/parse_unit_value.hpp"
 
 void operator >> (const YAML::Node& node, YamlTimeSeries& c)
 {
@@ -22,16 +23,15 @@ void operator >> (const YAML::Node& node, YamlTimeSeries& c)
     }
 
     node["t"] >> c.t;
-    for(YAML::Iterator it=node.begin();it!=node.end();++it)
+    for(auto it=node.begin();it!=node.end();++it)
     {
-        std::string key = "";
-        it.first() >> key;
+        std::string key = it->first.as<std::string>();
         if ((key != "name") and (key != "t"))
         {
             try
             {
                 std::vector<double> values;
-                ssc::yaml_parser::parse_uv(node[key], values);
+                xdyn::yaml_parser::parse_uv(node[key], values);
                 c.values[key] = values;
             }
             catch(const YAML::Exception& e)
@@ -44,10 +44,7 @@ void operator >> (const YAML::Node& node, YamlTimeSeries& c)
 
 std::vector<YamlTimeSeries> parse_command_yaml(const std::string& yaml)
 {
-    std::stringstream stream(yaml);
-    YAML::Parser parser(stream);
-    YAML::Node node;
-    parser.GetNextDocument(node);
+    YAML::Node node = YAML::Load(yaml);
     std::vector<YamlTimeSeries> ret;
     node["commands"] >> ret;
     return ret;
@@ -55,10 +52,7 @@ std::vector<YamlTimeSeries> parse_command_yaml(const std::string& yaml)
 
 std::vector<YamlTimeSeries> parse_setpoint_yaml(const std::string& yaml)
 {
-    std::stringstream stream(yaml);
-    YAML::Parser parser(stream);
-    YAML::Node node;
-    parser.GetNextDocument(node);
+    YAML::Node node = YAML::Load(yaml);
     std::vector<YamlTimeSeries> ret;
     node["setpoints"] >> ret;
     return ret;

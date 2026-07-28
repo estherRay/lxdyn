@@ -1,8 +1,9 @@
 #include "AeroPolarForceModel.hpp"
 #include "xdyn/yaml_parser/external_data_structures_parsers.hpp"
-#include <ssc/yaml_parser.hpp>
+#include "xdyn/yaml_parser/parse_unit_value.hpp"
 #include <ssc/kinematics.hpp>
-#include "yaml.h"
+#include "xdyn/yaml_parser/yaml_compat.h"
+#include <iostream>
 #include <algorithm>
 #include <cmath>
 
@@ -65,16 +66,13 @@ AeroPolarForceModel::AeroPolarForceModel(const Input input, const std::string bo
 
 AeroPolarForceModel::Input AeroPolarForceModel::parse(const std::string& yaml)
 {
-    std::stringstream stream(yaml);
-    YAML::Parser parser(stream);
-    YAML::Node node;
-    parser.GetNextDocument(node);
+    YAML::Node node = YAML::Load(yaml);
     Input ret;
     node["name"] >> ret.name;
-    ssc::yaml_parser::parse_uv(node["AWA"], ret.apparent_wind_angle);
+    xdyn::yaml_parser::parse_uv(node["AWA"], ret.apparent_wind_angle);
     ret.lift_coefficient = extract_vector_of_doubles(node, "lift coefficient");
     ret.drag_coefficient = extract_vector_of_doubles(node, "drag coefficient");
-    ssc::yaml_parser::parse_uv(node["reference area"], ret.reference_area);
+    xdyn::yaml_parser::parse_uv(node["reference area"], ret.reference_area);
     node["calculation point in body frame"] >> ret.calculation_point_in_body_frame;
     parse_optional(node, "angle command", ret.angle_command);
     return ret;

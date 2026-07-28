@@ -15,7 +15,7 @@
 #include "xdyn/test_data_generator/yaml_data.hpp"
 #include "xdyn/yaml_parser/external_data_structures_parsers.hpp"
 #include "xdyn/yaml_parser/SimulatorYamlParser.hpp"
-#include "yaml.h"
+#include "xdyn/yaml_parser/yaml_compat.h"
 
 const BodyPtr BodyBuilderTest::body = BodyBuilderTest::build_body();
 
@@ -607,10 +607,7 @@ TEST_F(BodyBuilderTest, build_added_matrix_on_no_added_mass)
         "    row 4: [0,0,0,0,0,0]\n"
         "    row 5: [0,0,0,0,0,0]\n"
         "    row 6: [0,0,0,0,0,0]\n";
-    std::stringstream stream(no_added_mass);
-    YAML::Parser parser(stream);
-    YAML::Node node;
-    parser.GetNextDocument(node);
+    YAML::Node node = YAML::Load(no_added_mass);
     YamlDynamics6x6Matrix M;
     parse_YamlDynamics6x6Matrix(node["added mass matrix at the center of gravity and projected in the body frame"], M, false);
     const Eigen::Matrix<double,6,6> ret = build_added_matrix("my_body", M);
@@ -626,10 +623,7 @@ TEST_F(BodyBuilderTest, build_added_matrix_on_no_added_mass)
 void check_added_masses(const std::string& yaml_added_masses);
 void check_added_masses(const std::string& yaml_added_masses)
 {
-    std::stringstream stream(yaml_added_masses);
-    YAML::Parser parser(stream);
-    YAML::Node node;
-    parser.GetNextDocument(node);
+    YAML::Node node = YAML::Load(yaml_added_masses);
     YamlDynamics6x6Matrix M;
     parse_YamlDynamics6x6Matrix(node["added mass matrix at the center of gravity and projected in the body frame"], M, false);
     const Eigen::Matrix<double,6,6> ret = build_added_matrix("my_body", M);

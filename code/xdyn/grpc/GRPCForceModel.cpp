@@ -16,10 +16,10 @@
 #include "xdyn/hdb_interpolators/HydroDBParser.hpp"
 
 #include <ssc/macros.hpp>
-#include <ssc/yaml_parser.hpp>
+#include "xdyn/yaml_parser/parse_unit_value.hpp"
 #include <ssc/kinematics.hpp>
 
-#include "yaml.h"
+#include "xdyn/yaml_parser/yaml_compat.h"
 
 #include <memory> // std::make_shared
 #include <vector>
@@ -153,16 +153,13 @@ std::string GRPCForceModel::model_name() {return "grpc";}
 
 GRPCForceModel::Input GRPCForceModel::parse(const std::string& yaml)
 {
-    std::stringstream stream(yaml);
-    YAML::Parser parser(stream);
-    YAML::Node node;
-    parser.GetNextDocument(node);
+    YAML::Node node = YAML::Load(yaml);
     GRPCForceModel::Input ret;
     node["url"] >> ret.url;
     node["name"] >> ret.name;
-    if (node.FindValue("hdb"))
+    if (node["hdb"])
     {
-        if (node.FindValue("raodb"))
+        if (node["raodb"])
         {
             THROW(__PRETTY_FUNCTION__, InvalidInputException,
                   "When parsing the gRPC force model '" << ret.name << "': you cannot specify both an HDB filename and a PRECAL_R filename "
@@ -170,7 +167,7 @@ GRPCForceModel::Input GRPCForceModel::parse(const std::string& yaml)
         }
         node["hdb"] >> ret.hdb_filename;
     }
-    if (node.FindValue("raodb"))
+    if (node["raodb"])
     {
         node["raodb"] >> ret.precal_filename;
     }

@@ -9,13 +9,16 @@
 #define SIMULATORYAMLPARSER_HPP_
 
 #include "xdyn/external_data_structures/YamlSimulatorInput.hpp"
-#include <ssc/yaml_parser/YamlParser.hpp>
+#include <string>
 
-class SimulatorYamlParser : public ssc::yaml_parser::YamlParser
+class SimulatorYamlParser
 {
     public:
         SimulatorYamlParser(const std::string& data);
         YamlSimulatorInput parse() const;
+
+    private:
+        const std::string contents;
 };
 
 #endif /* SIMULATORYAMLPARSER_HPP_ */

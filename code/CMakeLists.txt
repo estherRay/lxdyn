@@ -101,7 +101,6 @@ ADD_SUBDIRECTORY(ssc/ssc/data_source)
 ADD_SUBDIRECTORY(ssc/ssc/random_data_generator)
 ADD_SUBDIRECTORY(ssc/ssc/exception_handling)
 ADD_SUBDIRECTORY(ssc/ssc/decode_unit)
-ADD_SUBDIRECTORY(ssc/ssc/yaml_parser)
 ADD_SUBDIRECTORY(ssc/ssc/text_file_reader)
 ADD_SUBDIRECTORY(ssc/ssc/integrate)
 ADD_SUBDIRECTORY(ssc/ssc/numeric)
@@ -118,7 +117,6 @@ ADD_LIBRARY(${PROJECT_NAME} ${STATICORSHARED}
     $<TARGET_OBJECTS:random_data_generator_object>
     $<TARGET_OBJECTS:exception_handling_object>
     $<TARGET_OBJECTS:decode_unit_object>
-    $<TARGET_OBJECTS:yaml_parser_object>
     $<TARGET_OBJECTS:text_file_reader_object>
     $<TARGET_OBJECTS:integrate_object>
     $<TARGET_OBJECTS:numeric_object>

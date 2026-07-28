@@ -10,6 +10,7 @@ SET(SRC
     parse_output.cpp
     parse_time_series.cpp
     parse_address.cpp
+    parse_unit_value.cpp
     )
 
 INCLUDE_DIRECTORIES(${ssc_INCLUDE_DIRS})

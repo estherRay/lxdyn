@@ -1,8 +1,8 @@
 #include "HoltropMennenForceModel.hpp"
 #include "xdyn/core/EnvironmentAndFrames.hpp"
-#include <ssc/yaml_parser.hpp>
+#include "xdyn/yaml_parser/parse_unit_value.hpp"
 #include <ssc/exception_handling.hpp>
-#include "yaml.h"
+#include "xdyn/yaml_parser/yaml_compat.h"
 #include <cmath>
 
 std::string HoltropMennenForceModel::model_name()
@@ -35,46 +35,43 @@ HoltropMennenForceModel::Input::Input() :
 
 HoltropMennenForceModel::Input HoltropMennenForceModel::parse(const std::string& yaml)
 {
-    std::stringstream stream(yaml);
-    YAML::Parser parser(stream);
-    YAML::Node node;
-    parser.GetNextDocument(node);
+    YAML::Node node = YAML::Load(yaml);
     Input ret;
 
-    ssc::yaml_parser::parse_uv(node["Lwl"], ret.Lwl);
-    ssc::yaml_parser::parse_uv(node["Lpp"], ret.Lpp);
-    ssc::yaml_parser::parse_uv(node["B"], ret.B);
-    ssc::yaml_parser::parse_uv(node["Ta"], ret.Ta);
-    ssc::yaml_parser::parse_uv(node["Tf"], ret.Tf);
-    ssc::yaml_parser::parse_uv(node["Vol"], ret.Vol);
+    xdyn::yaml_parser::parse_uv(node["Lwl"], ret.Lwl);
+    xdyn::yaml_parser::parse_uv(node["Lpp"], ret.Lpp);
+    xdyn::yaml_parser::parse_uv(node["B"], ret.B);
+    xdyn::yaml_parser::parse_uv(node["Ta"], ret.Ta);
+    xdyn::yaml_parser::parse_uv(node["Tf"], ret.Tf);
+    xdyn::yaml_parser::parse_uv(node["Vol"], ret.Vol);
     node["lcb"] >> ret.lcb;
-    if(node.FindValue("S"))
+    if(node["S"])
     {
         double S;
-        ssc::yaml_parser::parse_uv(node["S"], S);
+        xdyn::yaml_parser::parse_uv(node["S"], S);
         ret.S = S;
     }
-    ssc::yaml_parser::parse_uv(node["Abt"], ret.Abt);
-    ssc::yaml_parser::parse_uv(node["hb"], ret.hb);
+    xdyn::yaml_parser::parse_uv(node["Abt"], ret.Abt);
+    xdyn::yaml_parser::parse_uv(node["hb"], ret.hb);
     node["Cm"] >> ret.Cm;
     node["Cwp"] >> ret.Cwp;
-    if(node.FindValue("iE"))
+    if(node["iE"])
     {
         double iE;
-        ssc::yaml_parser::parse_uv(node["iE"], iE);
+        xdyn::yaml_parser::parse_uv(node["iE"], iE);
         ret.iE = iE*180/M_PI;
     }
-    ssc::yaml_parser::parse_uv(node["At"], ret.At);
-    ssc::yaml_parser::parse_uv(node["Sapp"], ret.Sapp);
+    xdyn::yaml_parser::parse_uv(node["At"], ret.At);
+    xdyn::yaml_parser::parse_uv(node["Sapp"], ret.Sapp);
     node["Cstern"] >> ret.Cstern;
-    if(node.FindValue("1+k1"))
+    if(node["1+k1"])
     {
         double hull_form_coeff;
         node["1+k1"] >> hull_form_coeff;
         ret.hull_form_coeff = hull_form_coeff;
     }
     node["1+k2"] >> ret.app_form_coeff;
-    if(node.FindValue("apply on ship speed direction")) node["apply on ship speed direction"] >> ret.apply_on_ship_speed_direction;
+    if(node["apply on ship speed direction"]) node["apply on ship speed direction"] >> ret.apply_on_ship_speed_direction;
     return ret;
 }
 

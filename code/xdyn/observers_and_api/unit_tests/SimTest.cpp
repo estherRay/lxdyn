@@ -662,42 +662,12 @@ TEST_F(SimTest, bug_2984)
     const auto yaml = test_data::bug_2984();
     auto input = SimulatorYamlParser(yaml).parse();
     boost::replace_all(input.bodies[0].external_forces[0].yaml
-            ,"  phi:\n"
-             "    unit: rad\n"
-             "    value: 0\n"
-             "  psi:\n"
-             "    unit: deg\n"
-             "    value: 0\n"
-             "  theta:\n"
-             "    unit: deg\n"
-             "    value: 4.\n"
-             "  x:\n"
-             "    unit: m\n"
-             "    value: -53.319\n"
-             "  y:\n"
-             "    unit: m\n"
-             "    value: -3.750\n"
-             "  z:\n"
-             "    unit: m\n"
-             "    value: 6.799\n"
-            ,"  phi:\n"
-             "    unit: rad\n"
-             "    value: 0\n"
-             "  psi:\n"
-             "    unit: deg\n"
-             "    value: 0\n"
-             "  theta:\n"
-             "    unit: deg\n"
-             "    value: 4.\n"
-             "  x:\n"
-             "    unit: m\n"
-             "    value: 0\n"
-             "  y:\n"
-             "    unit: m\n"
-             "    value: 0\n"
-             "  z:\n"
-             "    unit: m\n"
-             "    value: 0\n");
+            ,"  x: {value: -53.319, unit: m}\n"
+             "  y: {value: -3.750, unit: m}\n"
+             "  z: {value: 6.799, unit: m}\n"
+            ,"  x: {value: 0, unit: m}\n"
+             "  y: {value: 0, unit: m}\n"
+             "  z: {value: 0, unit: m}\n");
 
     ListOfObservers observer(parse_output(yaml));
     ssc::data_source::DataSource command_listener;

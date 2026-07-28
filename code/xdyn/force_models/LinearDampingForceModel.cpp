@@ -10,7 +10,7 @@
 #include "xdyn/core/yaml2eigen.hpp"
 #include "xdyn/yaml_parser/external_data_structures_parsers.hpp"
 #include <Eigen/Dense>
-#include "yaml.h"
+#include "xdyn/yaml_parser/yaml_compat.h"
 
 std::string LinearDampingForceModel::model_name() {return "linear damping";}
 
@@ -26,11 +26,7 @@ Eigen::Matrix<double, 6, 1> LinearDampingForceModel::get_force_and_torque(const 
 
 LinearDampingForceModel::Input LinearDampingForceModel::parse(const std::string& yaml)
 {
-    Eigen::Matrix<double,6,6> ret;
-    std::stringstream stream(yaml);
-    YAML::Parser parser(stream);
-    YAML::Node node;
-    parser.GetNextDocument(node);
+    YAML::Node node = YAML::Load(yaml);
     YamlDynamics6x6Matrix M;
     try
     {

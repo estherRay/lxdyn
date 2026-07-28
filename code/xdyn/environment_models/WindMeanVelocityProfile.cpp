@@ -6,9 +6,9 @@
  */
 
 #include "WindMeanVelocityProfile.hpp"
-#include <ssc/yaml_parser.hpp>
+#include "xdyn/yaml_parser/parse_unit_value.hpp"
 #include <Eigen/Dense>
-#include "yaml.h"
+#include "xdyn/yaml_parser/yaml_compat.h"
 
 
 WindMeanVelocityProfile::WindMeanVelocityProfile(const Input& input) : velocity(input.velocity), direction(cos(input.direction), sin(input.direction), 0.)
@@ -26,13 +26,10 @@ Eigen::Vector3d WindMeanVelocityProfile::get_wind(const Eigen::Vector3d& positio
 
 WindMeanVelocityProfile::Input WindMeanVelocityProfile::parse(const std::string& yaml_input)
 {
-    std::stringstream stream(yaml_input);
-    YAML::Parser parser(stream);
-    YAML::Node node;
-    parser.GetNextDocument(node);
+    YAML::Node node = YAML::Load(yaml_input);
     Input ret;
-    ssc::yaml_parser::parse_uv(node["velocity"], ret.velocity);
-    ssc::yaml_parser::parse_uv(node["direction"], ret.direction);
+    xdyn::yaml_parser::parse_uv(node["velocity"], ret.velocity);
+    xdyn::yaml_parser::parse_uv(node["direction"], ret.direction);
     return ret;
 }
 

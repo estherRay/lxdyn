@@ -1,6 +1,6 @@
 #include "GrpcControllerInterface.hpp"
 #include "xdyn/exceptions/InvalidInputException.hpp"
-#include "yaml.h"
+#include "xdyn/yaml_parser/yaml_compat.h"
 #include <grpcpp/grpcpp.h>
 #include "controller.pb.h"
 #include "controller.grpc.pb.h"
@@ -244,11 +244,7 @@ std::shared_ptr<GrpcControllerInterface> GrpcControllerInterface::build(const Gr
 GrpcControllerInterface::Input
 GrpcControllerInterface::parse (const std::string &yaml)
 {
-    std::stringstream stream (yaml);
-    std::stringstream ss;
-    YAML::Parser parser (stream);
-    YAML::Node node;
-    parser.GetNextDocument (node);
+    const YAML::Node node = YAML::Load(yaml);
     GrpcControllerInterface::Input ret;
     try
     {

@@ -19,9 +19,10 @@
 
 #include <ssc/macros.hpp>
 
-#include <ssc/yaml_parser.hpp>
+#include "xdyn/yaml_parser/parse_unit_value.hpp"
 
-#include "yaml.h"
+#include "xdyn/yaml_parser/yaml_compat.h"
+#include <iostream>
 
 #include <Eigen/Dense>
 #include <cassert>
@@ -400,25 +401,21 @@ TypeOfQuadrature parse_type_of_quadrature_(const std::string& s)
 RadiationDampingForceModel::Input RadiationDampingForceModel::parse(const std::string& yaml, const bool parse_hdb_or_precalr)
 {
     RadiationDampingForceModel::Input ret;
-    std::stringstream stream(yaml);
-    std::stringstream ss;
-    YAML::Parser parser(stream);
-    YAML::Node node;
-    parser.GetNextDocument(node);
+    YAML::Node node = YAML::Load(yaml);
     YamlRadiationDamping input;
-    if (node.FindValue("hdb") && node.FindValue("raodb"))
+    if (node["hdb"] && node["raodb"])
     {
         THROW(__PRETTY_FUNCTION__, InvalidInputException, "When using the radiation force model, you cannot specify both the 'hdb' and 'raodb' in the YAML, as xdyn would not know which one to use to retrieve radiation damping coefficients: you should remove either 'hdb' or 'raodb' from the YAML file.");
     }
-    if (!node.FindValue("hdb") && !node.FindValue("raodb"))
+    if (!node["hdb"] && !node["raodb"])
     {
         THROW(__PRETTY_FUNCTION__, InvalidInputException, "When using the radiation force model, you must use *either* the 'hdb' key in the YAML file (to read the radiation damping matrix coefficients from an HDB file) *or* 'raodb' (if you wish to use the outputs of PRECAL_R): xdyn couldn't find either in the YAML file.");
     }
-    if (node.FindValue("hdb"))
+    if (node["hdb"])
     {
         node["hdb"] >> input.hdb_filename;
     }
-    if (node.FindValue("raodb"))
+    if (node["raodb"])
     {
         node["raodb"] >> input.precal_r_filename;
     }
@@ -428,17 +425,17 @@ RadiationDampingForceModel::Input RadiationDampingForceModel::parse(const std::s
     node["type of quadrature for convolution"] >> s;
     input.type_of_quadrature_for_convolution = parse_type_of_quadrature_(s);
     node["nb of points for retardation function discretization"] >> input.nb_of_points_for_retardation_function_discretization;
-    ssc::yaml_parser::parse_uv(node["omega min"], input.omega_min);
-    ssc::yaml_parser::parse_uv(node["omega max"], input.omega_max);
-    ssc::yaml_parser::parse_uv(node["tau min"], input.tau_min);
-    ssc::yaml_parser::parse_uv(node["tau max"], input.tau_max);
+    xdyn::yaml_parser::parse_uv(node["omega min"], input.omega_min);
+    xdyn::yaml_parser::parse_uv(node["omega max"], input.omega_max);
+    xdyn::yaml_parser::parse_uv(node["tau min"], input.tau_min);
+    xdyn::yaml_parser::parse_uv(node["tau max"], input.tau_max);
     node["output Br and K"] >> input.output_Br_and_K;
     node["calculation point in body frame"] >> input.calculation_point_in_body_frame;
-    if (node.FindValue("remove constant speed"))
+    if (node["remove constant speed"])
     {
         node["remove constant speed"] >> input.remove_constant_speed;
     }
-    if (node.FindValue("forward speed correction"))
+    if (node["forward speed correction"])
     {
         node["forward speed correction"] >> input.forward_speed_correction;
     }

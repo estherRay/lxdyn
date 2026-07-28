@@ -279,11 +279,9 @@ windows_gccx_posix: HDF5_DIR=/opt/HDF5_1_8_20/cmake
 windows_gccx_posix: cmake-windows-target build-windows test-windows
 
 
-code/yaml-cpp/CMakeLists.txt: yaml-cpp-CMakeLists.txt
-	$(DOCKER_AS_USER) $(DOCKER_IMAGE) /bin/bash -c \
-	    "rm -rf /opt/share/code/yaml-cpp && \
-	     cp -rf /opt/yaml_cpp /opt/share/code/yaml-cpp && \
-	     cp /opt/share/yaml-cpp-CMakeLists.txt /opt/share/code/yaml-cpp/CMakeLists.txt"
+# yaml-cpp 0.8.0 is a submodule, no longer copied out of the docker image at configure time
+code/yaml-cpp/CMakeLists.txt:
+	@git submodule update --init code/yaml-cpp
 
 
 cmake-windows-target: code/yaml-cpp/CMakeLists.txt

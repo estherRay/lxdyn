@@ -7,9 +7,9 @@
 #include "KtKqForceModel.hpp"
 #include "xdyn/exceptions/NumericalErrorException.hpp"
 #include "xdyn/yaml_parser/external_data_structures_parsers.hpp"
-#include <ssc/yaml_parser.hpp>
+#include "xdyn/yaml_parser/parse_unit_value.hpp"
 #include <ssc/interpolation.hpp>
-#include "yaml.h"
+#include "xdyn/yaml_parser/yaml_compat.h"
 
 std::string KtKqForceModel::model_name() {return "Kt(J) & Kq(J)";}
 
@@ -39,10 +39,7 @@ KtKqForceModel::Yaml::Yaml(const AbstractWageningen::Yaml& y) :
 
 KtKqForceModel::Yaml KtKqForceModel::parse(const std::string& yaml)
 {
-    std::stringstream stream(yaml);
-    YAML::Parser parser(stream);
-    YAML::Node node;
-    parser.GetNextDocument(node);
+    YAML::Node node = YAML::Load(yaml);
     Yaml ret = AbstractWageningen::parse(yaml);;
     node["J"]  >> ret.J;
     node["Kt"] >> ret.Kt;

@@ -9,8 +9,9 @@
 #include "xdyn/core/Body.hpp"
 #include "xdyn/yaml_parser/environment_parsers.hpp"
 #include <ssc/interpolation.hpp>
-#include <ssc/yaml_parser.hpp>
-#include "yaml.h"
+#include "xdyn/yaml_parser/parse_unit_value.hpp"
+#include "xdyn/yaml_parser/yaml_compat.h"
+#include <iostream>
 
 ResistanceCurveForceModel::Yaml::Yaml(): Va(), R() {}
 
@@ -45,13 +46,10 @@ ResistanceCurveForceModel::ResistanceCurveForceModel(const Yaml& data, const std
 
 ResistanceCurveForceModel::Yaml ResistanceCurveForceModel::parse(const std::string& yaml)
 {
-    std::stringstream stream(yaml);
-    YAML::Parser parser(stream);
-    YAML::Node node;
-    parser.GetNextDocument(node);
+    YAML::Node node = YAML::Load(yaml);
     Yaml ret;
-    ssc::yaml_parser::parse_uv(node["speed"], ret.Va);
-    ssc::yaml_parser::parse_uv(node["resistance"], ret.R);
+    xdyn::yaml_parser::parse_uv(node["speed"], ret.Va);
+    xdyn::yaml_parser::parse_uv(node["resistance"], ret.R);
     return ret;
 }
 

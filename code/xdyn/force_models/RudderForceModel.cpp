@@ -9,8 +9,8 @@
 #include "xdyn/core/yaml2eigen.hpp"
 #include "xdyn/yaml_parser/external_data_structures_parsers.hpp"
 
-#include <ssc/yaml_parser.hpp>
-#include "yaml.h"
+#include "xdyn/yaml_parser/parse_unit_value.hpp"
+#include "xdyn/yaml_parser/yaml_compat.h"
 
 #define _USE_MATH_DEFINE
 #include <cmath>
@@ -254,14 +254,11 @@ Wrench RudderForceModel::get_force(
 
 RudderForceModel::Yaml RudderForceModel::parse(const std::string& yaml)
 {
-    std::stringstream stream(yaml);
-    YAML::Parser parser(stream);
-    YAML::Node node;
-    parser.GetNextDocument(node);
+    YAML::Node node = YAML::Load(yaml);
     Yaml ret(WageningenControlledForceModel::parse(yaml));
 
-    ssc::yaml_parser::parse_uv(node["rudder area"], ret.Ar);
-    ssc::yaml_parser::parse_uv(node["rudder height"], ret.b);
+    xdyn::yaml_parser::parse_uv(node["rudder area"], ret.Ar);
+    xdyn::yaml_parser::parse_uv(node["rudder height"], ret.b);
     node["effective aspect ratio factor"]    >> ret.effective_aspect_ratio_factor;
     node["lift tuning coefficient"]          >> ret.lift_coeff;
     node["drag tuning coefficient"]          >> ret.drag_coeff;

@@ -11,8 +11,8 @@
 #include "xdyn/core/Body.hpp"
 #include <ssc/macros.hpp>
 #include <ssc/kinematics.hpp>
-#include <ssc/yaml_parser.hpp>
-#include "yaml.h"
+#include "xdyn/yaml_parser/parse_unit_value.hpp"
+#include "xdyn/yaml_parser/yaml_compat.h"
 
 std::string ConstantForceModel::model_name() {return "constant force";}
 
@@ -31,21 +31,18 @@ ConstantForceModel::Input::Input():
 
 ConstantForceModel::Input ConstantForceModel::parse(const std::string& yaml)
 {
-    std::stringstream stream(yaml);
-    YAML::Parser parser(stream);
-    YAML::Node node;
-    parser.GetNextDocument(node);
+    YAML::Node node = YAML::Load(yaml);
     ConstantForceModel::Input ret;
     node["frame"] >> ret.frame;
-    ssc::yaml_parser::parse_uv(node["x"], ret.x);
-    ssc::yaml_parser::parse_uv(node["y"], ret.y);
-    ssc::yaml_parser::parse_uv(node["z"], ret.z);
-    ssc::yaml_parser::parse_uv(node["X"], ret.X);
-    ssc::yaml_parser::parse_uv(node["Y"], ret.Y);
-    ssc::yaml_parser::parse_uv(node["Z"], ret.Z);
-    ssc::yaml_parser::parse_uv(node["K"], ret.K);
-    ssc::yaml_parser::parse_uv(node["M"], ret.M);
-    ssc::yaml_parser::parse_uv(node["N"], ret.N);
+    xdyn::yaml_parser::parse_uv(node["x"], ret.x);
+    xdyn::yaml_parser::parse_uv(node["y"], ret.y);
+    xdyn::yaml_parser::parse_uv(node["z"], ret.z);
+    xdyn::yaml_parser::parse_uv(node["X"], ret.X);
+    xdyn::yaml_parser::parse_uv(node["Y"], ret.Y);
+    xdyn::yaml_parser::parse_uv(node["Z"], ret.Z);
+    xdyn::yaml_parser::parse_uv(node["K"], ret.K);
+    xdyn::yaml_parser::parse_uv(node["M"], ret.M);
+    xdyn::yaml_parser::parse_uv(node["N"], ret.N);
     return ret;
 }
 

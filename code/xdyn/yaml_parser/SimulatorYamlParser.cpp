@@ -10,21 +10,21 @@
 #include "parse_controllers.hpp"
 #include "parse_time_series.hpp"
 #include "xdyn/exceptions/InvalidInputException.hpp"
-#include "yaml.h"
+#include "yaml_compat.h"
 
-SimulatorYamlParser::SimulatorYamlParser(const std::string& data) : YamlParser(data)
+SimulatorYamlParser::SimulatorYamlParser(const std::string& data) : contents(data)
 {
 }
 
 #define PARSE_OPTIONAL_KEY(key, dest) \
-if(const YAML::Node *parameter = node.FindValue(key))\
+if(node[key])\
     {\
-        *parameter >> dest;\
+        node[key] >> dest;\
     }
 
 
 #define CHECK_KEY_EXISTS(key) \
-    if (node.FindValue(key)==nullptr) \
+    if (!node[key]) \
     { \
         THROW(__PRETTY_FUNCTION__, InvalidInputException, \
             std::string("YAML node \"") + key + \
@@ -33,8 +33,7 @@ if(const YAML::Node *parameter = node.FindValue(key))\
 
 YamlSimulatorInput SimulatorYamlParser::parse() const
 {
-    YAML::Node node;
-    convert_stream_to_yaml_node(contents, node);
+    YAML::Node node = YAML::Load(contents);
     if (node.size() == 0)
     {
         THROW(__PRETTY_FUNCTION__, InvalidInputException,

@@ -58,7 +58,7 @@ TEST_F(SimulatorYamlParserTest, can_parse_environment)
     const std::vector<YamlModel> env = yaml.environment;
     ASSERT_EQ("no wind", env.at(0).model);
     ASSERT_EQ("no waves", env.at(1).model);
-    ASSERT_EQ("constant sea elevation in NED frame:\n  unit: m\n  value: 12\nmodel: no waves", env.at(1).yaml);
+    ASSERT_EQ("model: no waves\nconstant sea elevation in NED frame: {value: 12, unit: m}", env.at(1).yaml);
 }
 
 TEST_F(SimulatorYamlParserTest, can_parse_environmental_constants)
@@ -534,8 +534,8 @@ TEST_F(SimulatorYamlParserTest, can_parse_filtered_states)
     ASSERT_TRUE(yaml.bodies.front().filtered_states.x.empty());
     ASSERT_TRUE(yaml.bodies.front().filtered_states.y.empty());
     ASSERT_TRUE(yaml.bodies.front().filtered_states.z.empty());
-    ASSERT_EQ("duration in seconds: 2.3\ntype of filter: moving average", yaml.bodies.front().filtered_states.u);
-    ASSERT_EQ("duration in seconds: 3\ntype of filter: moving average", yaml.bodies.front().filtered_states.v);
+    ASSERT_EQ("type of filter: moving average\nduration in seconds: 2.3", yaml.bodies.front().filtered_states.u);
+    ASSERT_EQ("type of filter: moving average\nduration in seconds: 3", yaml.bodies.front().filtered_states.v);
     ASSERT_TRUE(yaml.bodies.front().filtered_states.w.empty());
     ASSERT_TRUE(yaml.bodies.front().filtered_states.p.empty());
     ASSERT_TRUE(yaml.bodies.front().filtered_states.q.empty());

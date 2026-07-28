@@ -4,7 +4,7 @@
 #include "xdyn/exceptions/InternalErrorException.hpp"
 #include "xdyn/external_data_structures/YamlBody.hpp"
 #include "xdyn/hdb_interpolators/History.hpp"
-#include "yaml.h"
+#include "xdyn/yaml_parser/yaml_compat.h"
 
 FilteredStates::FilteredStates(const StatesFilter& filters, const AbstractStates<History>& states, const YamlRotation& rot)
     : AbstractStates<double>()
@@ -54,10 +54,7 @@ std::shared_ptr<StateFilter> StateFilter::build(const std::string& yaml)
     {
         return std::shared_ptr<StateFilter>(new MovingAverage(0));
     }
-    std::stringstream stream(yaml);
-    YAML::Parser parser(stream);
-    YAML::Node node;
-    parser.GetNextDocument(node);
+    YAML::Node node = YAML::Load(yaml);
     std::string type_of_filter;
     node["type of filter"] >> type_of_filter;
 

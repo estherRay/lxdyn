@@ -2,7 +2,7 @@
 #include "xdyn/core/yaml2eigen.hpp"
 #include "xdyn/yaml_parser/external_data_structures_parsers.hpp"
 #include <ssc/kinematics.hpp>
-#include "yaml.h"
+#include "xdyn/yaml_parser/yaml_compat.h"
 
 LinearStiffnessForceModel::Input::Input(): name(), K(), equilibrium_position() {}
 
@@ -44,10 +44,7 @@ Wrench LinearStiffnessForceModel::get_force(const BodyStates& states, const doub
 
 LinearStiffnessForceModel::Input LinearStiffnessForceModel::parse(const std::string& yaml)
 {
-    std::stringstream stream(yaml);
-    YAML::Parser parser(stream);
-    YAML::Node node;
-    parser.GetNextDocument(node);
+    YAML::Node node = YAML::Load(yaml);
     Input ret;
     node["name"] >> ret.name;
     YamlDynamics6x6Matrix M;

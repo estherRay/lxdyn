@@ -1,7 +1,8 @@
 #include "HydroPolarForceModel.hpp"
 #include "xdyn/yaml_parser/external_data_structures_parsers.hpp"
-#include "yaml.h"
-#include <ssc/yaml_parser.hpp>
+#include "xdyn/yaml_parser/yaml_compat.h"
+#include <iostream>
+#include "xdyn/yaml_parser/parse_unit_value.hpp"
 #include <ssc/kinematics.hpp>
 #include <algorithm>
 #include <cmath>
@@ -93,21 +94,18 @@ HydroPolarForceModel::HydroPolarForceModel(const Input& input, const std::string
 
 HydroPolarForceModel::Input HydroPolarForceModel::parse(const std::string& yaml)
 {
-    std::stringstream stream(yaml);
-    YAML::Parser parser(stream);
-    YAML::Node node;
-    parser.GetNextDocument(node);
+    YAML::Node node = YAML::Load(yaml);
     Input ret;
     node["name"] >> ret.name;
-    ssc::yaml_parser::parse_uv(node["angle of attack"], ret.angle_of_attack);
+    xdyn::yaml_parser::parse_uv(node["angle of attack"], ret.angle_of_attack);
     ret.lift_coefficient = extract_vector_of_doubles(node, "lift coefficient");
     ret.drag_coefficient = extract_vector_of_doubles(node, "drag coefficient");
     parse_optional(node, "moment coefficient", ret.moment_coefficient);
-    ssc::yaml_parser::parse_uv(node["reference area"], ret.reference_area);
-    if (node.FindValue("chord length"))
+    xdyn::yaml_parser::parse_uv(node["reference area"], ret.reference_area);
+    if (node["chord length"])
     {
-        double cord_length; // Intermediate value is necessary to call ssc::yaml_parser::parse_uv
-        ssc::yaml_parser::parse_uv(node["chord length"], cord_length);
+        double cord_length; // Intermediate value is necessary to call xdyn::yaml_parser::parse_uv
+        xdyn::yaml_parser::parse_uv(node["chord length"], cord_length);
         ret.chord_length = cord_length;
     }
     node["position of calculation frame"] >> ret.internal_frame;

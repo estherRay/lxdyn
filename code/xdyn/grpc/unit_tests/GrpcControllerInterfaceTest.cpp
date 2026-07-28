@@ -46,7 +46,7 @@ TEST_F (GrpcControllerInterfaceTest, should_throw_a_helpful_message_if_input_is_
         error_msg = e.get_message ();
     }
     ASSERT_EQ ("Unable to parse YAML data for a gRPC controller:\n"
-               "yaml-cpp: error at line 1, column 1: key not found: url\n"
+               "invalid node; first invalid key: \"url\"\n"
                "The offending YAML block was:\n"
                "some: invalid YAML",
                error_msg);

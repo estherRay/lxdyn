@@ -8,9 +8,9 @@
 
 #include "xdyn/core/BodyStates.hpp"
 #include "xdyn/yaml_parser/external_data_structures_parsers.hpp"
-#include <ssc/yaml_parser.hpp>
+#include "xdyn/yaml_parser/parse_unit_value.hpp"
 
-#include "yaml.h"
+#include "xdyn/yaml_parser/yaml_compat.h"
 
 #define _USE_MATH_DEFINE
 #include <cmath>
@@ -24,14 +24,11 @@ SimpleHeadingKeepingController::Yaml::Yaml() : name(), ksi(0), Tp(0)
 
 SimpleHeadingKeepingController::Yaml SimpleHeadingKeepingController::parse(const std::string& yaml)
 {
-    std::stringstream stream(yaml);
-    YAML::Parser parser(stream);
-    YAML::Node node;
-    parser.GetNextDocument(node);
+    YAML::Node node = YAML::Load(yaml);
     Yaml ret;
     node["name"] >> ret.name;
     node["ksi"] >> ret.ksi;
-    ::ssc::yaml_parser::parse_uv(node["Tp"], ret.Tp);
+    ::xdyn::yaml_parser::parse_uv(node["Tp"], ret.Tp);
     return ret;
 }
 

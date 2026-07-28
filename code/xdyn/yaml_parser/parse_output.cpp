@@ -8,27 +8,27 @@
 #include "parse_output.hpp"
 #include "parse_address.hpp"
 #include "xdyn/exceptions/InvalidInputException.hpp"
-#include "yaml.h"
+#include "yaml_compat.h"
 #include <boost/algorithm/string/predicate.hpp>
 
 void operator >> (const YAML::Node& node, YamlOutput& f);
 void operator >> (const YAML::Node& node, YamlOutput& f)
 {
-    if(const YAML::Node *pName = node.FindValue("filename"))
+    if(node["filename"])
     {
-        *pName >> f.filename;
+        node["filename"] >> f.filename;
     }
-    if(const YAML::Node *pName = node.FindValue("address"))
+    if(node["address"])
     {
-        *pName >> f.address;
+        node["address"] >> f.address;
     }
-    if(const YAML::Node *pName = node.FindValue("port"))
+    if(node["port"])
     {
-        *pName >> f.port;
+        node["port"] >> f.port;
     }
     node["format"]   >> f.format;
     node["data"]     >> f.data;
-    if (node.FindValue("full output"))
+    if (node["full output"])
     {
         node["full output"] >> f.full_output;
     }
@@ -37,10 +37,7 @@ void operator >> (const YAML::Node& node, YamlOutput& f)
 std::vector<YamlOutput> parse_output(const std::string& yaml)
 {
     std::vector<YamlOutput> ret;
-    std::stringstream stream(yaml);
-    YAML::Parser parser(stream);
-    YAML::Node node;
-    parser.GetNextDocument(node);
+    YAML::Node node = YAML::Load(yaml);
     try
     {
         node["output"] >> ret;

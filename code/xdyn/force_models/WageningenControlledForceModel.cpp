@@ -11,9 +11,10 @@
 #include "xdyn/exceptions/InvalidInputException.hpp"
 #include "xdyn/yaml_parser/external_data_structures_parsers.hpp"
 
-#include <ssc/yaml_parser.hpp>
+#include "xdyn/yaml_parser/parse_unit_value.hpp"
 
-#include "yaml.h"
+#include "xdyn/yaml_parser/yaml_compat.h"
+#include <iostream>
 
 WageningenControlledForceModel::Yaml::Yaml(): number_of_blades(0), blade_area_ratio(0.0){}
 
@@ -117,10 +118,7 @@ double WageningenControlledForceModel::Kq(const size_t Z, const double AE_A0_, c
 WageningenControlledForceModel::Yaml WageningenControlledForceModel::parse(const std::string& yaml)
 {
     WageningenControlledForceModel::Yaml ret(AbstractWageningen::parse(yaml));
-    std::stringstream stream(yaml);
-    YAML::Parser parser(stream);
-    YAML::Node node;
-    parser.GetNextDocument(node);
+    YAML::Node node = YAML::Load(yaml);
     node["blade area ratio AE/A0"] >> ret.blade_area_ratio;
     ret.number_of_blades = try_to_parse_positive_integer(node,"number of blades");
     return ret;

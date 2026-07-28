@@ -8,7 +8,7 @@
 #include "PIDController.hpp"
 #include "xdyn/exceptions/InvalidInputException.hpp"
 #include "xdyn/yaml_parser/check_input_yaml.hpp"
-#include "yaml.h"
+#include "xdyn/yaml_parser/yaml_compat.h"
 
 PIDController::PIDController (const double tstart,
                               const double dt,
@@ -28,11 +28,7 @@ std::vector<std::string> PIDController::get_command_names() const
 
 PIDController::Yaml::Yaml (const std::string &yaml) : Kp (), Ki (), Kd (), state_weights (), setpoint_name (), command_name ()
 {
-    std::stringstream stream (yaml);
-    std::stringstream ss;
-    YAML::Parser parser (stream);
-    YAML::Node node;
-    parser.GetNextDocument (node);
+    YAML::Node node = YAML::Load(yaml);
 
     node["setpoint"] >> setpoint_name;
     node["command"] >> command_name;
@@ -50,10 +46,10 @@ PIDController::Yaml::Yaml (const std::string &yaml) : Kp (), Ki (), Kd (), state
                "'Kp', 'Ki' and 'Kd'.");
     }
 
-    for(YAML::Iterator it=node["state weights"].begin();it!=node["state weights"].end();++it)
+    for(auto it=node["state weights"].begin();it!=node["state weights"].end();++it)
     {
         std::string key = "";
-        it.first() >> key;
+        it->first >> key;
         try
         {
             check_state_name(key);

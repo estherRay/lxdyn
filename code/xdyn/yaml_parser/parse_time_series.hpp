@@ -9,7 +9,7 @@
 #define PARSE_TIME_SERIES_HPP_
 
 #include "xdyn/external_data_structures/YamlTimeSeries.hpp"
-#include "yaml.h"
+#include <yaml-cpp/yaml.h>
 
 /**  \brief Parses the commands for use by controlled forces.
   *  \snippet yaml_parser/unit_tests/parse_time_seriesTest.cpp parse_command_yaml example

@@ -12,7 +12,7 @@
 #include "xdyn/core/yaml2eigen.hpp"
 #include "xdyn/exceptions/InvalidInputException.hpp"
 #include "xdyn/yaml_parser/external_data_structures_parsers.hpp"
-#include "yaml.h"
+#include "xdyn/yaml_parser/yaml_compat.h"
 
 ManeuveringForceModel::Yaml::Yaml():
     name(),
@@ -26,11 +26,7 @@ std::string ManeuveringForceModel::model_name() {return "maneuvering";}
 ManeuveringForceModel::Yaml ManeuveringForceModel::parse(const std::string& yaml)
 {
     ManeuveringForceModel::Yaml ret;
-    std::stringstream stream(yaml);
-    std::stringstream ss;
-    YAML::Parser parser(stream);
-    YAML::Node node;
-    parser.GetNextDocument(node);
+    YAML::Node node = YAML::Load(yaml);
     try
     {
         node["reference frame"] >> ret.frame_of_reference;
@@ -40,10 +36,10 @@ ManeuveringForceModel::Yaml ManeuveringForceModel::parse(const std::string& yaml
         THROW(__PRETTY_FUNCTION__, InvalidInputException, "Unable to parse 'reference frame': it should contain the sub-nodes 'frame', 'x', 'y', 'z', 'phi', 'theta' and 'psi'.");
     }
     node["name"] >> ret.name;
-    for(YAML::Iterator it=node.begin();it!=node.end();++it)
+    for(auto it=node.begin();it!=node.end();++it)
     {
         std::string key = "";
-        it.first() >> key;
+        it->first >> key;
         if (key == "commands")
         {
             node[key] >> ret.commands;

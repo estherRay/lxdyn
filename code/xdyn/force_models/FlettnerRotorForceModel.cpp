@@ -2,9 +2,10 @@
 #include "xdyn/core/ForceModel.hpp"
 #include "xdyn/core/BodyStates.hpp"
 #include "xdyn/yaml_parser/external_data_structures_parsers.hpp"
-#include "yaml.h"
+#include "xdyn/yaml_parser/yaml_compat.h"
+#include <iostream>
 #include <Eigen/Dense>
-#include <ssc/yaml_parser.hpp>
+#include "xdyn/yaml_parser/parse_unit_value.hpp"
 #include <ssc/kinematics.hpp>
 #include <ssc/interpolation.hpp>
 #include <cmath>
@@ -36,15 +37,12 @@ FlettnerRotorForceModel::FlettnerRotorForceModel(const Input& input, const std::
 
 FlettnerRotorForceModel::Input FlettnerRotorForceModel::parse(const std::string& yaml)
 {
-    std::stringstream stream(yaml);
-    YAML::Parser parser(stream);
-    YAML::Node node;
-    parser.GetNextDocument(node);
+    YAML::Node node = YAML::Load(yaml);
     Input ret;
 
     node["name"] >> ret.name;
-    ssc::yaml_parser::parse_uv(node["length"], ret.length);
-    ssc::yaml_parser::parse_uv(node["diameter"], ret.diameter);
+    xdyn::yaml_parser::parse_uv(node["length"], ret.length);
+    xdyn::yaml_parser::parse_uv(node["diameter"], ret.diameter);
     node["spin ratio"] >> ret.spin_ratio;
     ret.lift_coefficient = extract_vector_of_doubles(node, "lift coefficient");
     ret.drag_coefficient = extract_vector_of_doubles(node, "drag coefficient");

@@ -14,8 +14,8 @@
 #include "xdyn/core/Observer.hpp"
 #include "xdyn/exceptions/InvalidInputException.hpp"
 #include "xdyn/yaml_parser/environment_parsers.hpp"
-#include <ssc/yaml_parser.hpp>
-#include "yaml.h"
+#include "xdyn/yaml_parser/parse_unit_value.hpp"
+#include "xdyn/yaml_parser/yaml_compat.h"
 
 std::string GMForceModel::model_name(){return "GM";}
 
@@ -56,13 +56,10 @@ double GMForceModel::get_GM() const
 
 GMForceModel::Yaml GMForceModel::parse(const std::string& yaml)
 {
-    std::stringstream stream(yaml);
-    YAML::Parser parser(stream);
-    YAML::Node node;
-    parser.GetNextDocument(node);
+    YAML::Node node = YAML::Load(yaml);
     Yaml ret;
     node["name of hydrostatic force model"] >> ret.name_of_hydrostatic_force_model;
-    ssc::yaml_parser::parse_uv(node["roll step"], ret.roll_step);
+    xdyn::yaml_parser::parse_uv(node["roll step"], ret.roll_step);
     if (ret.name_of_hydrostatic_force_model == "non-linear hydrostatic (exact)")
     {
         ret.try_to_parse = ForceModel::build_parser<ExactHydrostaticForceModel>();

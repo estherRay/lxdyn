@@ -19,9 +19,6 @@ ssc_windows
 .zig-cache/
 *.o
 
-# yaml-cpp 0.3 is copied out of the docker image at configure time, never committed.
-code/yaml-cpp
-
 # Test droppings: run_all_tests and the tutorials write these into their cwd,
 # which is the repo root. The Makefile writes .dockerignore there too.
 #

@@ -7,8 +7,8 @@
 
 #include "PowerLawWindVelocityProfile.hpp"
 #include "xdyn/exceptions/InvalidInputException.hpp"
-#include <ssc/yaml_parser.hpp>
-#include "yaml.h"
+#include "xdyn/yaml_parser/parse_unit_value.hpp"
+#include "xdyn/yaml_parser/yaml_compat.h"
 #include <cmath>
 
 
@@ -29,12 +29,9 @@ std::string PowerLawWindVelocityProfile::model_name() {return "power law wind pr
 PowerLawWindVelocityProfile::Input PowerLawWindVelocityProfile::parse(const std::string& yaml_input)
 {
     Input ret(WindMeanVelocityProfile::parse(yaml_input));
-    std::stringstream stream(yaml_input);
-    YAML::Parser parser(stream);
-    YAML::Node node;
-    parser.GetNextDocument(node);
+    YAML::Node node = YAML::Load(yaml_input);
     node["alpha"] >> ret.alpha;
-    ssc::yaml_parser::parse_uv(node["reference height"], ret.z_ref);
+    xdyn::yaml_parser::parse_uv(node["reference height"], ret.z_ref);
     return ret;
 }
 

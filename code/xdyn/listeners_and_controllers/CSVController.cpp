@@ -7,7 +7,7 @@
 
 #include "CSVController.hpp"
 #include "xdyn/exceptions/InvalidInputException.hpp"
-#include "yaml.h"
+#include "xdyn/yaml_parser/yaml_compat.h"
 #include <numeric>
 
 CSVController::Yaml::Yaml(const std::string& yaml)
@@ -17,11 +17,7 @@ CSVController::Yaml::Yaml(const std::string& yaml)
     , shift_time_column()
     , commands()
 {
-    std::stringstream stream(yaml);
-    std::stringstream ss;
-    YAML::Parser parser(stream);
-    YAML::Node node;
-    parser.GetNextDocument(node);
+    YAML::Node node = YAML::Load(yaml);
     node["path"] >> path;
     node["time column name"] >> time_column;
     std::string sep;

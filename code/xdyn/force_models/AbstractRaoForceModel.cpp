@@ -14,7 +14,7 @@
 #include "xdyn/hdb_interpolators/HydroDBParser.hpp"
 #include "xdyn/hdb_interpolators/PrecalParser.hpp"
 #include "xdyn/yaml_parser/external_data_structures_parsers.hpp"
-#include "yaml.h"
+#include "xdyn/yaml_parser/yaml_compat.h"
 
 std::string AbstractRaoForceModel::get_model_name(const YamlRAO::TypeOfRao& type_of_rao)
 {
@@ -59,16 +59,13 @@ Wrench AbstractRaoForceModel::get_force(const BodyStates& states, const double t
 
 AbstractRaoForceModel::Input AbstractRaoForceModel::parse(const std::string& yaml, const YamlRAO::TypeOfRao& type_of_rao)
 {
-    std::stringstream stream(yaml);
-    YAML::Parser parser(stream);
-    YAML::Node node;
-    parser.GetNextDocument(node);
+    YAML::Node node = YAML::Load(yaml);
     YamlRAO ret;
     ret.type_of_rao = type_of_rao;
 
-    if (node.FindValue("hdb"))
+    if (node["hdb"])
     {
-        if (node.FindValue("raodb"))
+        if (node["raodb"])
         {
             THROW(__PRETTY_FUNCTION__, InvalidInputException,
                   "cannot specify both an HDB filename and a PRECAL_R filename "
@@ -77,7 +74,7 @@ AbstractRaoForceModel::Input AbstractRaoForceModel::parse(const std::string& yam
         node["hdb"] >> ret.hdb_filename;
         node["calculation point in body frame"] >> ret.calculation_point;
     }
-    else if (node.FindValue("raodb"))
+    else if (node["raodb"])
     {
         node["raodb"] >> ret.precal_filename;
         ret.calculation_point = YamlCoordinates(0, 0, 0);

@@ -3,10 +3,10 @@
 #include "xdyn/core/BodyStates.hpp"
 #include "xdyn/core/EnvironmentAndFrames.hpp"
 #include "xdyn/external_data_structures/YamlPosition.hpp"
-#include <ssc/yaml_parser.hpp>
+#include "xdyn/yaml_parser/parse_unit_value.hpp"
 #include <ssc/kinematics.hpp>
 #include <Eigen/Dense>
-#include "yaml.h"
+#include "xdyn/yaml_parser/yaml_compat.h"
 #include <cmath>
 
 MMGManeuveringForceModel::Input::Input():
@@ -40,15 +40,12 @@ MMGManeuveringForceModel::MMGManeuveringForceModel(const Input& input_, const st
 
 MMGManeuveringForceModel::Input MMGManeuveringForceModel::parse(const std::string& yaml)
 {
-    std::stringstream stream(yaml);
-    YAML::Parser parser(stream);
-    YAML::Node node;
-    parser.GetNextDocument(node);
+    YAML::Node node = YAML::Load(yaml);
     Input ret;
 
     node["calculation point in body frame"] >> ret.application_point;
-    ssc::yaml_parser::parse_uv(node["Lpp"], ret.Lpp);
-    ssc::yaml_parser::parse_uv(node["T"], ret.T);
+    xdyn::yaml_parser::parse_uv(node["Lpp"], ret.Lpp);
+    xdyn::yaml_parser::parse_uv(node["T"], ret.T);
     node["Xvv"] >> ret.Xvv;
     node["Xrr"] >> ret.Xrr;
     node["Xvr"] >> ret.Xvr;

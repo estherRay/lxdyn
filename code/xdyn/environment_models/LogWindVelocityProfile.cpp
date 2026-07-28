@@ -5,8 +5,8 @@
  *      Author: mcharlou2016
  */
 #include "LogWindVelocityProfile.hpp"
-#include <ssc/yaml_parser.hpp>
-#include "yaml.h"
+#include "xdyn/yaml_parser/parse_unit_value.hpp"
+#include "xdyn/yaml_parser/yaml_compat.h"
 #include <cmath>
 
 
@@ -31,12 +31,9 @@ std::string LogWindVelocityProfile::model_name() {return "log wind profile";}
 LogWindVelocityProfile::Input LogWindVelocityProfile::parse(const std::string& yaml_input)
 {
     Input ret(WindMeanVelocityProfile::parse(yaml_input));
-    std::stringstream stream(yaml_input);
-    YAML::Parser parser(stream);
-    YAML::Node node;
-    parser.GetNextDocument(node);
-    ssc::yaml_parser::parse_uv(node["roughness length"], ret.z0);
-    ssc::yaml_parser::parse_uv(node["reference height"], ret.z_ref);
+    YAML::Node node = YAML::Load(yaml_input);
+    xdyn::yaml_parser::parse_uv(node["roughness length"], ret.z0);
+    xdyn::yaml_parser::parse_uv(node["reference height"], ret.z_ref);
     return ret;
 }
 

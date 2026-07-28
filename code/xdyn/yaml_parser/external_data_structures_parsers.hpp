@@ -9,9 +9,13 @@
 #define EXTERNAL_DATA_STRUCTURES_PARSERS_HPP_
 
 #include "xdyn/external_data_structures/YamlSimulatorInput.hpp"
+// The templates below extract with node >> value. That operator is a global-namespace
+// template, so ADL cannot find it at instantiation — it has to be visible here, where
+// the templates are defined.
+#include "xdyn/yaml_parser/yaml_compat.h"
 
 #include <boost/optional/optional.hpp>
-#include <yaml.h>
+#include <yaml-cpp/yaml.h>
 
 size_t try_to_parse_positive_integer(const YAML::Node& node, const std::string& key);
 void operator >> (const YAML::Node& node, YamlAngle& a);
@@ -35,14 +39,13 @@ std::vector<double> extract_vector_of_doubles(const YAML::Node& node, const std:
 template <typename T>
 void try_to_parse(const YAML::Node& node, const std::string& key, T& value)
 {
-    const YAML::Node * n = node.FindValue(key);
-    if (n) (*n) >> value;
+    if (node[key]) node[key] >> value;
 }
 
 template <typename T>
 void parse_optional(const YAML::Node& node, const std::string& key, boost::optional<T>& opt)
 {
-    if (node.FindValue(key))
+    if (node[key])
     {
         T value;
         node[key] >> value;

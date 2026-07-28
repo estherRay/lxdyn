@@ -89,18 +89,18 @@ TEST_F(environment_parsersTest, can_parse_wave_spreading_and_spectral_data)
     ASSERT_EQ(2,yaml.spectra.size());
 
     ASSERT_EQ("dirac",yaml.spectra.at(0).directional_spreading_type);
-    ASSERT_EQ("type: dirac\nwaves propagating to:\n  unit: deg\n  value: 90",yaml.spectra.at(0).directional_spreading_yaml);
+    ASSERT_EQ("type: dirac\nwaves propagating to: {value: 90, unit: deg}",yaml.spectra.at(0).directional_spreading_yaml);
     ASSERT_EQ("airy",yaml.spectra.at(0).model);
-    ASSERT_EQ("depth:\n  unit: km\n  value: 1.7\ndirectional spreading:\n  type: dirac\n  waves propagating to:\n    unit: deg\n    value: 90\nmodel: airy\nseed of the random data generator: 0\nspectral density:\n  Hs:\n    unit: m\n    value: 5\n  Tp:\n    unit: s\n    value: 15\n  gamma: 1.2\n  type: jonswap\nstretching:\n  delta: 0.5\n  h:\n    unit: m\n    value: 100",yaml.spectra.at(0).model_yaml);
+    ASSERT_EQ("model: airy\nseed of the random data generator: 0\nstretching:\n  delta: 0.5\n  h: {unit: m, value: 100}\ndepth: {value: 1.7, unit: km}\ndirectional spreading:\n  type: dirac\n  waves propagating to: {value: 90, unit: deg}\nspectral density:\n  type: jonswap\n  Hs: {value: 5, unit: m}\n  Tp: {value: 15, unit: s}\n  gamma: 1.2",yaml.spectra.at(0).model_yaml);
     ASSERT_EQ("jonswap",yaml.spectra.at(0).spectral_density_type);
-    ASSERT_EQ("Hs:\n  unit: m\n  value: 5\nTp:\n  unit: s\n  value: 15\ngamma: 1.2\ntype: jonswap",yaml.spectra.at(0).spectral_density_yaml);
+    ASSERT_EQ("type: jonswap\nHs: {value: 5, unit: m}\nTp: {value: 15, unit: s}\ngamma: 1.2",yaml.spectra.at(0).spectral_density_yaml);
 
     ASSERT_EQ("cos2s",yaml.spectra.at(1).directional_spreading_type);
-    ASSERT_EQ("s: 2\ntype: cos2s\nwaves propagating to:\n  unit: deg\n  value: 90",yaml.spectra.at(1).directional_spreading_yaml);
+    ASSERT_EQ("type: cos2s\ns: 2\nwaves propagating to: {value: 90, unit: deg}",yaml.spectra.at(1).directional_spreading_yaml);
     ASSERT_EQ("airy",yaml.spectra.at(1).model);
-    ASSERT_EQ("depth:\n  unit: m\n  value: 12\ndirectional spreading:\n  s: 2\n  type: cos2s\n  waves propagating to:\n    unit: deg\n    value: 90\nmodel: airy\nseed of the random data generator: 1872\nspectral density:\n  Hs:\n    unit: m\n    value: 5\n  Tp:\n    unit: s\n    value: 15\n  type: dirac\nstretching:\n  delta: 0.6\n  h:\n    unit: m\n    value: 101",yaml.spectra.at(1).model_yaml);
+    ASSERT_EQ("model: airy\ndepth: {value: 12, unit: m}\nseed of the random data generator: 1872\nstretching:\n  delta: 0.6\n  h: {unit: m, value: 101}\ndirectional spreading:\n  type: cos2s\n  s: 2\n  waves propagating to: {value: 90, unit: deg}\nspectral density:\n  type: dirac\n  Hs: {value: 5, unit: m}\n  Tp: {value: 15, unit: s}",yaml.spectra.at(1).model_yaml);
     ASSERT_EQ("dirac",yaml.spectra.at(1).spectral_density_type);
-    ASSERT_EQ("Hs:\n  unit: m\n  value: 5\nTp:\n  unit: s\n  value: 15\ntype: dirac",yaml.spectra.at(1).spectral_density_yaml);
+    ASSERT_EQ("type: dirac\nHs: {value: 5, unit: m}\nTp: {value: 15, unit: s}",yaml.spectra.at(1).spectral_density_yaml);
 }
 
 TEST_F(environment_parsersTest, can_parse_wave_outputs)
@@ -210,7 +210,7 @@ TEST_F(environment_parsersTest, clearer_error_message_if_missing_unit_value)
          * that is not shipped with Windows MXE cross platform build
          * Thus, we use boost::regex!
          */
-        const boost::regex expected_regex("Error parsing section wave/spectra: In file .*/yaml_parser/environment_parsers.cpp, line [1-9][0-9]*, function void operator>>\\(const YAML::Node\\s*&, YamlStretching\\s*&\\): Error parsing wave stretching parameters \\('wave/spectra/stretching' section in the YAML file\\): In file .*yaml_parser/environment_parsers.cpp, line [1-9][0-9]*, function void operator>>\\(const YAML::Node\\s*&, YamlStretching\\s*&\\): Error parsing wave stretching parameters 'h': was expecting an object with fields 'unit' and 'value', e.g.:\n\th: \\{unit: 'm', value: 101\\}\nbut got the following error trying to parse it: yaml-cpp: error at line 0, column 0: bad dereference");
+        const boost::regex expected_regex("Error parsing section wave/spectra: In file .*/yaml_parser/environment_parsers.cpp, line [1-9][0-9]*, function void operator>>\\(const YAML::Node\\s*&, YamlStretching\\s*&\\): Error parsing wave stretching parameters \\('wave/spectra/stretching' section in the YAML file\\): In file .*yaml_parser/environment_parsers.cpp, line [1-9][0-9]*, function void operator>>\\(const YAML::Node\\s*&, YamlStretching\\s*&\\): Error parsing wave stretching parameters 'h': was expecting an object with fields 'unit' and 'value', e.g.:\n\th: \\{unit: 'm', value: 101\\}\nbut got the following error trying to parse it: yaml-cpp: error at line [0-9]+, column [0-9]+: operator\\[\\] call on a scalar \\(key: \"unit\"\\)");
         ASSERT_TRUE(boost::regex_match(e.get_message(), expected_regex)) << e.get_message();
     }
     ASSERT_THROW(parse_waves(wave_yaml), InvalidInputException);

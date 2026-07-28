@@ -7,7 +7,8 @@
 
 #include "LinearHydrostaticForceModel.hpp"
 #include <ssc/exception_handling.hpp>
-#include <ssc/yaml_parser.hpp>
+#include "xdyn/yaml_parser/parse_unit_value.hpp"
+#include "xdyn/yaml_parser/yaml_compat.h"
 
 LinearHydrostaticForceModel::Input::Input():
     z_eq(0.0),
@@ -22,14 +23,11 @@ std::string LinearHydrostaticForceModel::model_name() {return "linear hydrostati
 
 LinearHydrostaticForceModel::Input LinearHydrostaticForceModel::parse(const std::string& yaml)
 {
-    std::stringstream stream(yaml);
-    YAML::Parser parser(stream);
-    YAML::Node node;
-    parser.GetNextDocument(node);
+    YAML::Node node = YAML::Load(yaml);
     LinearHydrostaticForceModel::Input ret;
-    ssc::yaml_parser::parse_uv(node["z eq"], ret.z_eq);
-    ssc::yaml_parser::parse_uv(node["phi eq"], ret.phi_eq);
-    ssc::yaml_parser::parse_uv(node["theta eq"], ret.theta_eq);
+    xdyn::yaml_parser::parse_uv(node["z eq"], ret.z_eq);
+    xdyn::yaml_parser::parse_uv(node["phi eq"], ret.phi_eq);
+    xdyn::yaml_parser::parse_uv(node["theta eq"], ret.theta_eq);
     node["K row 1"] >> ret.K1;
     node["K row 2"] >> ret.K2;
     node["K row 3"] >> ret.K3;

@@ -11,8 +11,8 @@
 #include "parse_output.hpp"
 #include "xdyn/exceptions/InvalidInputException.hpp"
 #include "xdyn/external_data_structures/YamlGRPC.hpp"
-#include "yaml.h"
-#include <ssc/yaml_parser.hpp>
+#include "yaml_compat.h"
+#include "xdyn/yaml_parser/parse_unit_value.hpp"
 #include <ssc/csv_file_reader.hpp>
 #include <sstream>
 
@@ -28,11 +28,8 @@ void get_yaml(const YAML::Node& node, std::string& out);
 YamlDefaultWaveModel parse_default_wave_model(const std::string& yaml)
 {
     YamlDefaultWaveModel ret;
-    std::stringstream stream(yaml);
-    YAML::Parser parser(stream);
-    YAML::Node node;
-    parser.GetNextDocument(node);
-    ssc::yaml_parser::parse_uv(node["constant sea elevation in NED frame"], ret.zwave);
+    YAML::Node node = YAML::Load(yaml);
+    xdyn::yaml_parser::parse_uv(node["constant sea elevation in NED frame"], ret.zwave);
     try
     {
         node["output"]         >> ret.output;
@@ -46,10 +43,7 @@ YamlDefaultWaveModel parse_default_wave_model(const std::string& yaml)
 YamlDiscretization parse_discretization(const std::string& yaml)
 {
     YamlDiscretization ret;
-    std::stringstream stream(yaml);
-    YAML::Parser parser(stream);
-    YAML::Node node;
-    parser.GetNextDocument(node);
+    YAML::Node node = YAML::Load(yaml);
     node >> ret;
     return ret;
 }
@@ -57,17 +51,14 @@ YamlDiscretization parse_discretization(const std::string& yaml)
 YamlWaveModel parse_waves(const std::string& yaml)
 {
     YamlWaveModel ret;
-    std::stringstream stream(yaml);
-    YAML::Parser parser(stream);
-    YAML::Node node;
-    parser.GetNextDocument(node);
-    if ((not node.FindValue("spectra")) and (not node.FindValue("spectra from a list of rays")))
+    YAML::Node node = YAML::Load(yaml);
+    if ((!node["spectra"]) && (!node["spectra from a list of rays"]))
     {
         std::stringstream ss;
         ss << "Error parsing section wave: One should define at least 'spectra' and/or 'spectra from a list of rays' ";
         THROW(__PRETTY_FUNCTION__, InvalidInputException, ss.str());
     }
-    if (node.FindValue("spectra"))
+    if (node["spectra"])
     {
         try
         {
@@ -90,7 +81,7 @@ YamlWaveModel parse_waves(const std::string& yaml)
             THROW(__PRETTY_FUNCTION__, InvalidInputException, ss.str());
         }
     }
-    if (node.FindValue("spectra from a list of rays"))
+    if (node["spectra from a list of rays"])
     {
         try
         {
@@ -103,7 +94,7 @@ YamlWaveModel parse_waves(const std::string& yaml)
             THROW(__PRETTY_FUNCTION__, InvalidInputException, ss.str());
         }
     }
-    if (node.FindValue("output"))
+    if (node["output"])
     {
         try
         {
@@ -121,13 +112,13 @@ YamlWaveModel parse_waves(const std::string& yaml)
 
 void operator >> (const YAML::Node& node, YamlDiscretization& g)
 {
-    if (node.FindValue("n"))
+    if (node["n"])
     {
-        if (node.FindValue("n") && node.FindValue("nfreq"))
+        if (node["n"] && node["nfreq"])
         {
             THROW(__PRETTY_FUNCTION__, InvalidInputException, "When parsing the 'discretization' section of the YAML: you cannot specify both 'n' and 'nfreq': either use 'n' and the spectra will have the same number of directions as frequencies, or use 'nfreq' and 'ndir'.");
         }
-        if (node.FindValue("n") && node.FindValue("ndir"))
+        if (node["n"] && node["ndir"])
         {
             THROW(__PRETTY_FUNCTION__, InvalidInputException, "When parsing the 'discretization' section of the YAML: you cannot specify both 'n' and 'ndir': either use 'n' and the spectra will have the same number of directions as frequencies, or use 'nfreq' and 'ndir'.");
         }
@@ -139,8 +130,8 @@ void operator >> (const YAML::Node& node, YamlDiscretization& g)
         g.nfreq = try_to_parse_positive_integer(node, "nfreq");
         g.ndir = try_to_parse_positive_integer(node, "ndir");
     }
-    ssc::yaml_parser::parse_uv(node["omega min"], g.omega_min);
-    ssc::yaml_parser::parse_uv(node["omega max"], g.omega_max);
+    xdyn::yaml_parser::parse_uv(node["omega min"], g.omega_min);
+    xdyn::yaml_parser::parse_uv(node["omega max"], g.omega_max);
     node["energy fraction"] >> g.energy_fraction;
     try
     {
@@ -157,7 +148,7 @@ void operator >> (const YAML::Node& node, YamlStretching& g)
     {
         try
         {
-            ssc::yaml_parser::parse_uv(node["h"], g.h);
+            xdyn::yaml_parser::parse_uv(node["h"], g.h);
         }
         catch(const YAML::Exception& e)
         {
@@ -194,16 +185,16 @@ void operator >> (const YAML::Node& node, YamlSpectrum& g)
     get_yaml(node["spectral density"], g.spectral_density_yaml);
     node["stretching"] >> g.stretching;
 
-    ssc::yaml_parser::parse_uv(node["depth"], g.depth);
+    xdyn::yaml_parser::parse_uv(node["depth"], g.depth);
 }
 
 void operator >> (const YAML::Node& node, YamlSpectrumFromRays& g)
 {
     node["model"] >> g.model;
     get_yaml(node, g.model_yaml);
-    if (node.FindValue("rays"))
+    if (node["rays"])
     {
-        if (node.FindValue("rays from file"))
+        if (node["rays from file"])
         {
             THROW(__PRETTY_FUNCTION__, InvalidInputException,
                   "cannot specify both 'rays' and 'rays from file' "
@@ -211,7 +202,7 @@ void operator >> (const YAML::Node& node, YamlSpectrumFromRays& g)
         }
         node["rays"] >> g.rays;
     }
-    else if (node.FindValue("rays from file"))
+    else if (node["rays from file"])
     {
         std::string rays_filename;
         node["rays from file"] >> rays_filename;
@@ -241,16 +232,16 @@ void operator >> (const YAML::Node& node, YamlSpectrumFromRays& g)
               "(no 'rays' or 'rays from file' keys were found in the YAML file).");
     }
     node["stretching"] >> g.stretching;
-    ssc::yaml_parser::parse_uv(node["depth"], g.depth);
+    xdyn::yaml_parser::parse_uv(node["depth"], g.depth);
 }
 
 void operator >> (const YAML::Node& node, YamlRays& rays)
 {
-    ssc::yaml_parser::parse_uv(node["a"], rays.a);
-    ssc::yaml_parser::parse_uv(node["psi"], rays.psi);
-    ssc::yaml_parser::parse_uv(node["omega"], rays.omega);
-    ssc::yaml_parser::parse_uv(node["k"], rays.k);
-    ssc::yaml_parser::parse_uv(node["phase"], rays.phase);
+    xdyn::yaml_parser::parse_uv(node["a"], rays.a);
+    xdyn::yaml_parser::parse_uv(node["psi"], rays.psi);
+    xdyn::yaml_parser::parse_uv(node["omega"], rays.omega);
+    xdyn::yaml_parser::parse_uv(node["k"], rays.k);
+    xdyn::yaml_parser::parse_uv(node["phase"], rays.phase);
     const size_t n = rays.a.size();
     if (n!=rays.psi.size())
     {
@@ -281,11 +272,11 @@ void operator >> (const YAML::Node& node, YamlRays& rays)
 void operator >> (const YAML::Node& node, YamlWaveOutput& g)
 {
     node["frame of reference"] >> g.frame_of_reference;
-    ssc::yaml_parser::parse_uv(node["mesh"]["xmin"], g.xmin);
-    ssc::yaml_parser::parse_uv(node["mesh"]["xmax"], g.xmax);
+    xdyn::yaml_parser::parse_uv(node["mesh"]["xmin"], g.xmin);
+    xdyn::yaml_parser::parse_uv(node["mesh"]["xmax"], g.xmax);
     g.nx = try_to_parse_positive_integer(node["mesh"],"nx");
-    ssc::yaml_parser::parse_uv(node["mesh"]["ymin"], g.ymin);
-    ssc::yaml_parser::parse_uv(node["mesh"]["ymax"], g.ymax);
+    xdyn::yaml_parser::parse_uv(node["mesh"]["ymin"], g.ymin);
+    xdyn::yaml_parser::parse_uv(node["mesh"]["ymax"], g.ymax);
     g.ny = try_to_parse_positive_integer(node["mesh"],"ny");
 }
 
@@ -295,11 +286,8 @@ YamlDiracDirection parse_wave_dirac_direction(const std::string& yaml)
     YamlDiracDirection ret;
     try
     {
-        std::stringstream stream(yaml);
-        YAML::Parser parser(stream);
-        YAML::Node node;
-        parser.GetNextDocument(node);
-        ssc::yaml_parser::parse_uv(node["waves propagating to"], ret.psi0);
+        YAML::Node node = YAML::Load(yaml);
+        xdyn::yaml_parser::parse_uv(node["waves propagating to"], ret.psi0);
     }
     catch(std::exception& e)
     {
@@ -315,12 +303,9 @@ YamlDiracSpectrum    parse_wave_dirac_spectrum(const std::string& yaml)
     YamlDiracSpectrum ret;
     try
     {
-        std::stringstream stream(yaml);
-        YAML::Parser parser(stream);
-        YAML::Node node;
-        parser.GetNextDocument(node);
-        ssc::yaml_parser::parse_uv(node["Hs"], ret.Hs);
-        ssc::yaml_parser::parse_uv(node["omega0"], ret.omega0);
+        YAML::Node node = YAML::Load(yaml);
+        xdyn::yaml_parser::parse_uv(node["Hs"], ret.Hs);
+        xdyn::yaml_parser::parse_uv(node["omega0"], ret.omega0);
     }
     catch(std::exception& e)
     {
@@ -336,12 +321,9 @@ YamlJonswap          parse_jonswap(const std::string& yaml)
     YamlJonswap ret;
     try
     {
-        std::stringstream stream(yaml);
-        YAML::Parser parser(stream);
-        YAML::Node node;
-        parser.GetNextDocument(node);
-        ssc::yaml_parser::parse_uv(node["Hs"], ret.Hs);
-        ssc::yaml_parser::parse_uv(node["Tp"], ret.Tp);
+        YAML::Node node = YAML::Load(yaml);
+        xdyn::yaml_parser::parse_uv(node["Hs"], ret.Hs);
+        xdyn::yaml_parser::parse_uv(node["Tp"], ret.Tp);
         node["gamma"] >> ret.gamma;
     }
     catch(std::exception& e)
@@ -358,12 +340,9 @@ YamlPiersonMoskowitz parse_pierson_moskowitz(const std::string& yaml)
     YamlPiersonMoskowitz ret;
     try
     {
-        std::stringstream stream(yaml);
-        YAML::Parser parser(stream);
-        YAML::Node node;
-        parser.GetNextDocument(node);
-        ssc::yaml_parser::parse_uv(node["Hs"], ret.Hs);
-        ssc::yaml_parser::parse_uv(node["Tp"], ret.Tp);
+        YAML::Node node = YAML::Load(yaml);
+        xdyn::yaml_parser::parse_uv(node["Hs"], ret.Hs);
+        xdyn::yaml_parser::parse_uv(node["Tp"], ret.Tp);
     }
     catch(std::exception& e)
     {
@@ -379,12 +358,9 @@ YamlBretschneider    parse_bretschneider(const std::string& yaml)
     YamlBretschneider ret;
     try
     {
-        std::stringstream stream(yaml);
-        YAML::Parser parser(stream);
-        YAML::Node node;
-        parser.GetNextDocument(node);
-        ssc::yaml_parser::parse_uv(node["Hs"], ret.Hs);
-        ssc::yaml_parser::parse_uv(node["Tp"], ret.Tp);
+        YAML::Node node = YAML::Load(yaml);
+        xdyn::yaml_parser::parse_uv(node["Hs"], ret.Hs);
+        xdyn::yaml_parser::parse_uv(node["Tp"], ret.Tp);
     }
     catch(std::exception& e)
     {
@@ -400,11 +376,8 @@ YamlCos2s            parse_cos2s(const std::string& yaml)
     YamlCos2s ret;
     try
     {
-        std::stringstream stream(yaml);
-        YAML::Parser parser(stream);
-        YAML::Node node;
-        parser.GetNextDocument(node);
-        ssc::yaml_parser::parse_uv(node["waves propagating to"], ret.psi0);
+        YAML::Node node = YAML::Load(yaml);
+        xdyn::yaml_parser::parse_uv(node["waves propagating to"], ret.psi0);
         node["s"] >> ret.s;
     }
     catch(std::exception& e)
@@ -421,10 +394,7 @@ boost::optional<int> parse_seed_of_random_number_generator(const std::string& ya
     boost::optional<int> ret;
     try
     {
-        std::stringstream stream(yaml);
-        YAML::Parser parser(stream);
-        YAML::Node node;
-        parser.GetNextDocument(node);
+        YAML::Node node = YAML::Load(yaml);
         try
         {
             ret = (int)try_to_parse_positive_integer(node, "seed of the random data generator");
@@ -547,10 +517,7 @@ void operator >> (const YAML::Node& node, YamlGRPC& f)
 YamlGRPC parse_grpc(const std::string& yaml)
 {
     YamlGRPC out;
-    std::stringstream stream(yaml);
-    YAML::Parser parser(stream);
-    YAML::Node node;
-    parser.GetNextDocument(node);
+    YAML::Node node = YAML::Load(yaml);
     node >> out;
     out.rest_of_the_yaml = yaml;
     return out;

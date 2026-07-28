@@ -6,10 +6,10 @@
  */
 
 #include "external_data_structures_parsers.hpp"
-//#include "yaml-cpp/exceptions.h"
 #include "xdyn/exceptions/InvalidInputException.hpp"
-#include <ssc/yaml_parser.hpp>
-#include "yaml.h"
+#include "xdyn/yaml_parser/parse_unit_value.hpp"
+#include "yaml_compat.h"
+#include <iostream>
 
 size_t try_to_parse_positive_integer(const YAML::Node& node, const std::string& key)
 {
@@ -22,13 +22,13 @@ size_t try_to_parse_positive_integer(const YAML::Node& node, const std::string& 
     {
         std::stringstream ss;
         ss << "Error trying to parse key '" << key << "' (" << e.msg << ")";
-        throw YAML::Exception(node.GetMark(), ss.str());
+        throw YAML::Exception(node.Mark(), ss.str());
     }
     if (x < 0)
     {
         std::stringstream ss;
         ss << "Expected a positive integer for key '" << key << "', but got " << x;
-        throw YAML::Exception(node.GetMark(), ss.str());
+        throw YAML::Exception(node.Mark(), ss.str());
     }
     return (size_t)x;
 }
@@ -113,7 +113,7 @@ void operator >> (const YAML::Node& node, YamlBody& b)
         node["initial position of body frame relative to NED"]      >> b.initial_position_of_body_frame_relative_to_NED_projected_in_NED;
         node["initial velocity of body frame relative to NED"]      >> b.initial_velocity_of_body_frame_relative_to_NED_projected_in_body;
         node["dynamics"]                                            >> b.dynamics;
-        if (node.FindValue("filtered states"))
+        if (node["filtered states"])
         {
             node["filtered states"] >> b.filtered_states;
         }
@@ -131,7 +131,7 @@ void operator >> (const YAML::Node& node, YamlModel& m)
     YAML::Emitter out;
     out << node;
     m.yaml = out.c_str();
-    const int i = node.GetMark().line;
+    const int i = node.Mark().line;
     m.index_of_first_line_in_global_yaml = i > 0 ? 1+(size_t)i : 0;
 }
 
@@ -144,27 +144,27 @@ void operator >> (const YAML::Node& node, YamlPosition& p)
 
 void operator >> (const YAML::Node& node, YamlAngle& a)
 {
-    ssc::yaml_parser::parse_uv(node["phi"], a.phi);
-    ssc::yaml_parser::parse_uv(node["theta"], a.theta);
-    ssc::yaml_parser::parse_uv(node["psi"], a.psi);
+    xdyn::yaml_parser::parse_uv(node["phi"], a.phi);
+    xdyn::yaml_parser::parse_uv(node["theta"], a.theta);
+    xdyn::yaml_parser::parse_uv(node["psi"], a.psi);
 }
 
 void operator >> (const YAML::Node& node, YamlCoordinates& c)
 {
-    ssc::yaml_parser::parse_uv(node["x"], c.x);
-    ssc::yaml_parser::parse_uv(node["y"], c.y);
-    ssc::yaml_parser::parse_uv(node["z"], c.z);
+    xdyn::yaml_parser::parse_uv(node["x"], c.x);
+    xdyn::yaml_parser::parse_uv(node["y"], c.y);
+    xdyn::yaml_parser::parse_uv(node["z"], c.z);
 }
 
 void operator >> (const YAML::Node& node, YamlSpeed& s)
 {
     node["frame"] >> s.frame;
-    ssc::yaml_parser::parse_uv(node["u"], s.u);
-    ssc::yaml_parser::parse_uv(node["v"], s.v);
-    ssc::yaml_parser::parse_uv(node["w"], s.w);
-    ssc::yaml_parser::parse_uv(node["p"], s.p);
-    ssc::yaml_parser::parse_uv(node["q"], s.q);
-    ssc::yaml_parser::parse_uv(node["r"], s.r);
+    xdyn::yaml_parser::parse_uv(node["u"], s.u);
+    xdyn::yaml_parser::parse_uv(node["v"], s.v);
+    xdyn::yaml_parser::parse_uv(node["w"], s.w);
+    xdyn::yaml_parser::parse_uv(node["p"], s.p);
+    xdyn::yaml_parser::parse_uv(node["q"], s.q);
+    xdyn::yaml_parser::parse_uv(node["r"], s.r);
 }
 
 void operator >> (const YAML::Node& node, YamlDynamics& d)
@@ -174,15 +174,15 @@ void operator >> (const YAML::Node& node, YamlDynamics& d)
     const std::string rb_gravity("rigid body inertia matrix at the center of gravity and projected in the body frame");
     const std::string am_buoyancy("added mass matrix at the center of buoyancy projected in the body frame");
     const std::string am_gravity("added mass matrix at the center of gravity and projected in the body frame");
-    if (node.FindValue(rb_buoyancy) and node.FindValue(rb_gravity))
+    if (node[rb_buoyancy] && node[rb_gravity])
     {
         THROW(__PRETTY_FUNCTION__, InvalidInputException, "One can not define both keys '" << rb_buoyancy <<"' and '" << rb_gravity << "'.");
     }
-    if (node.FindValue(am_buoyancy) and node.FindValue(am_gravity))
+    if (node[am_buoyancy] && node[am_gravity])
     {
         THROW(__PRETTY_FUNCTION__, InvalidInputException, "One can not define both keys '" << am_buoyancy <<"' and '" << am_gravity << "'.");
     }
-    if (node.FindValue(rb_gravity))
+    if (node[rb_gravity])
     {
         try
         {
@@ -206,7 +206,7 @@ void operator >> (const YAML::Node& node, YamlDynamics& d)
         std::cout << "Using key '" << rb_buoyancy << "' is not recommended, as it is considered as the matrix expressed at center of gravity." << std::endl;
         std::cout << "Please replace key '" << rb_buoyancy << "' with key '" << rb_gravity << "'." <<std::endl;
     }
-    if (node.FindValue(am_gravity))
+    if (node[am_gravity])
     {
         try
         {
@@ -242,34 +242,34 @@ void operator >> (const YAML::Node& node, YamlPoint& p)
 
 void parse_YamlDynamics6x6Matrix(const YAML::Node& node, YamlDynamics6x6Matrix& m, const bool parse_frame, const std::string& frame_name)
 {
-    if (node.FindValue("from precal"))
+    if (node["from precal"])
     {
         THROW(__PRETTY_FUNCTION__, InvalidInputException, "You used YAML key 'from precal' but this key is deprecated: you should use 'from hdb' instead.");
     }
-    if (const YAML::Node* parameter = node.FindValue("from hdb"))
+    if (node["from hdb"])
     {
-        if (node.FindValue("row 1") or node.FindValue("row 2") or node.FindValue("row 3")
-            or node.FindValue("row 4") or node.FindValue("row 5") or node.FindValue("row 6")
-            or node.FindValue("convention z down"))
+        if (node["row 1"] || node["row 2"] || node["row 3"]
+            || node["row 4"] || node["row 5"] || node["row 6"]
+            || node["convention z down"])
         {
             THROW(__PRETTY_FUNCTION__, InvalidInputException,
                     "cannot specify both an HDB filename & a matrix (both keys 'from hdb' and "
                     "one of 'row 1', 'row 2', 'row 3', 'row 4', 'row 5' or 'row 6' were found in "
                     "the YAML file).");
         }
-        if (node.FindValue("from raodb"))
+        if (node["from raodb"])
         {
             THROW(__PRETTY_FUNCTION__, InvalidInputException,
                     "cannot specify both an HDB filename & a PRECAL_R filename (both keys 'from "
                     "hdb' and 'from raodb' were found in the YAML file).");
         }
         m.read_from_file = true;
-        *parameter >> m.hdb_filename;
+        node["from hdb"] >> m.hdb_filename;
     }
-    else if (const YAML::Node* parameter = node.FindValue("from raodb"))
+    else if (node["from raodb"])
     {
         m.read_from_file = true;
-        *parameter >> m.precal_filename;
+        node["from raodb"] >> m.precal_filename;
     }
     else
     {
@@ -284,9 +284,9 @@ void parse_YamlDynamics6x6Matrix(const YAML::Node& node, YamlDynamics6x6Matrix& 
                 m.frame = frame_name;
             }
             m.row_convention_xdyn_with_z_down = true;
-            if (const YAML::Node* parameter = node.FindValue("convention z down"))
+            if (node["convention z down"])
             {
-                *parameter >> m.row_convention_xdyn_with_z_down;
+                node["convention z down"] >> m.row_convention_xdyn_with_z_down;
             }
             node["row 1"] >> m.row_1;
             node["row 2"] >> m.row_2;
@@ -307,15 +307,15 @@ void parse_YamlDynamics6x6Matrix(const YAML::Node& node, YamlDynamics6x6Matrix& 
 
 void operator >> (const YAML::Node& node, YamlEnvironmentalConstants& f)
 {
-    ssc::yaml_parser::parse_uv(node["g"], f.g);
-    ssc::yaml_parser::parse_uv(node["rho"], f.rho);
-    if(node.FindValue("air rho"))
+    xdyn::yaml_parser::parse_uv(node["g"], f.g);
+    xdyn::yaml_parser::parse_uv(node["rho"], f.rho);
+    if(node["air rho"])
     {
         double rho_air;
-        ssc::yaml_parser::parse_uv(node["air rho"], rho_air);
+        xdyn::yaml_parser::parse_uv(node["air rho"], rho_air);
         f.rho_air = rho_air;
     }
-    ssc::yaml_parser::parse_uv(node["nu"], f.nu);
+    xdyn::yaml_parser::parse_uv(node["nu"], f.nu);
 }
 
 void operator >> (const YAML::Node& node, BlockableState& g);
@@ -370,20 +370,17 @@ void operator >> (const YAML::Node& node, YamlDOF<std::vector<double> >& g)
 
 void operator >> (const YAML::Node& node, YamlBlockedDOF& b)
 {
-    if (node.FindValue("from CSV"))  node["from CSV"]  >> b.from_csv;
-    if (node.FindValue("from YAML")) node["from YAML"] >> b.from_yaml;
+    if (node["from CSV"])  node["from CSV"]  >> b.from_csv;
+    if (node["from YAML"]) node["from YAML"] >> b.from_yaml;
 }
 
 YamlBlockedDOF parse(const std::string& yaml)
 {
-    std::stringstream stream(yaml);
-    YAML::Parser parser(stream);
-    YAML::Node node;
-    parser.GetNextDocument(node);
+    YAML::Node node = YAML::Load(yaml);
     YamlBlockedDOF ret;
     if (node.size())
     {
-        if (node.FindValue("blocked dof"))
+        if (node["blocked dof"])
         {
             node["blocked dof"] >> ret;
         }
@@ -400,7 +397,7 @@ std::string node_to_string(const YAML::Node& node)
 }
 
 #define PARSE_FILTERED_STATE(state) \
-        if (node.FindValue(#state))\
+        if (node[#state])\
         {\
             p.state = node_to_string(node[#state]);\
         }
