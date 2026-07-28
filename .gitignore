@@ -6,8 +6,10 @@ build_deb*
 build_ubuntu*
 build_win*
 build_doc
+build_native
 code/build_*
 install
+install_native
 install*32
 install*64
 Debug

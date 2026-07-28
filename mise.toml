@@ -1,0 +1,55 @@
+[env]
+BUILD_TYPE = "Release"
+
+# `git submodule sync` is deliberately absent: .gitmodules uses relative URLs, which git
+# resolves against the current branch's remote, so syncing from a fork rewrites them wrongly.
+
+[tasks.setup]
+description = "Submodules, SSC umbrella headers, and CMake configure"
+run = """
+git submodule update --init --recursive
+cd code/ssc/ssc && sh generate_module_header.sh
+"""
+
+[tasks.configure]
+description = "Configure the native CMake build"
+# Deliberately does not depend on setup: setup resets every submodule to its recorded pin,
+# which silently discards a local checkout you are in the middle of testing.
+run = """
+cmake -Wno-dev -G Ninja -S code -B build_native \
+  -D CMAKE_POLICY_VERSION_MINIMUM=3.5 \
+  -D CMAKE_BUILD_TYPE=${BUILD_TYPE} \
+  -D CMAKE_INSTALL_PREFIX:PATH=../install_native \
+  -D XDYN_NATIVE_BUILD=ON \
+  -D BUILD_PYTHON_WRAPPER:BOOL=False \
+  -D BUILD_DOCUMENTATION:BOOL=False
+"""
+
+[tasks.build]
+description = "Build xdyn and the test runner"
+run = "ninja -C build_native xdyn run_all_tests"
+
+[tasks.test]
+description = "Run the unit test suite"
+run = "cd build_native && ./run_all_tests"
+
+[tasks.install]
+description = "Install into install_native/"
+run = "ninja -C build_native install"
+
+[tasks.clean]
+description = "Remove the native build and install trees"
+run = "rm -rf build_native install_native"
+
+[tasks.lint]
+description = "Check for tabs in source files"
+run = """
+if grep --recursive --include='*.cpp' --include='*.c' --include='*.hpp' --include='*.h' \
+        --exclude-dir=ssc --exclude-dir=yaml-cpp --exclude-dir=websocketpp \
+        --exclude-dir=eigen3-hdf5 --exclude-dir=thirdparty -P "\t" code/xdyn/ ; then
+    echo "Tabs found in the lines shown above."
+    exit 1
+else
+    echo "Repo passed no-tabs check."
+fi
+"""
