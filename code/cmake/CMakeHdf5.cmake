@@ -1,7 +1,16 @@
 # Please note that the find_package invocation
 # changed in HDF5-1.8.16 to require "shared" or "static"
 SET(FIND_HDF_COMPONENTS C HL CXX CXX_HL)
-IF(DEFINED HDF5_DIR)
+IF(XDYN_NATIVE_BUILD)
+    # The system FindHDF5 module spells the components C CXX HL, not CXX_HL, and finds
+    # shared libraries rather than the image's static ones.
+    #
+    # Config mode is refused: a multi-output HDF5 install (nixpkgs) puts the tools in a
+    # separate output, while hdf5-config.cmake set_and_check()s HDF5_TOOLS_DIR against
+    # <out>/bin and hard-errors when it is absent.
+    SET(HDF5_NO_FIND_PACKAGE_CONFIG_FILE TRUE)
+    FIND_PACKAGE(HDF5 COMPONENTS C CXX HL REQUIRED)
+ELSEIF(DEFINED HDF5_DIR)
     MESSAGE(STATUS "Using user defined variable HDF5_DIR = ${HDF5_DIR}")
     FIND_PACKAGE(HDF5 PATHS ${HDF5_DIR} NO_SYSTEM_ENVIRONMENT_PATH COMPONENTS ${FIND_HDF_COMPONENTS} NO_MODULE REQUIRED static)
 ELSEIF(DEFINED ENV{HDF5_ROOT})

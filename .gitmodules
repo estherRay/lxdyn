@@ -11,3 +11,6 @@
 [submodule "code/websocketpp"]
 	path = code/websocketpp
 	url = https://github.com/LocutusOfBorg/websocketpp.git
+[submodule "code/eigen3-hdf5"]
+	path = code/eigen3-hdf5
+	url = https://github.com/garrison/eigen3-hdf5.git

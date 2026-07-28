@@ -70,6 +70,13 @@ ELSEIF("${CMAKE_CXX_COMPILER_ID}" STREQUAL "GNU")
         SET(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -g")
     ENDIF()
 
+    IF(XDYN_NATIVE_BUILD)
+        # GCC 15 at -O3 mis-analyses Boost.Asio's basic_resolver_results memcpy and reports it
+        # as out of bounds. It fires inside Boost, reached from SSC, so neither end can be
+        # annotated; downgrading it to a warning is the only lever on the xdyn side.
+        SET(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wno-error=array-bounds")
+    ENDIF()
+
 ELSEIF("${CMAKE_CXX_COMPILER_ID}" STREQUAL "Intel")
     # using Intel C++
     IF(CMAKE_SIZEOF_VOID_P EQUAL 8) # If on a 64 bit machine

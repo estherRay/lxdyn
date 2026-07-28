@@ -5,6 +5,9 @@ SET(CMAKE_VERBOSE_MAKEFILE OFF)
 #############################################################################
 OPTION(BUILD_DOCUMENTATION "Boolean used to build xdyn documentation" OFF)
 OPTION(THIRD_PARTY_DIRECTORY "Where should CMake look for (former submodules) eigen, eigen3-hdf5, etc... ?" ${CMAKE_CURRENT_SOURCE_DIR})
+# Resolve third-party dependencies from the environment rather than from the docker image's
+# /opt tree. THIRD_PARTY_DIRECTORY is then unused except for the MinGW lane.
+OPTION(XDYN_NATIVE_BUILD "Take third-party dependencies from the environment, not from THIRD_PARTY_DIRECTORY" OFF)
 #############################################################################
 # User configuration
 IF(NOT DEFINED CMAKE_BUILD_TYPE)
@@ -54,7 +57,14 @@ INCLUDE(CMakeBoost)
 SET(Boost_USE_STATIC_LIBS   ON)
 SET(Boost_USE_MULTITHREADED ON)
 #SET(Boost_USE_STATIC_RUNTIME    OFF)
-FIND_PACKAGE(Boost 1.53 COMPONENTS program_options filesystem system regex thread random chrono REQUIRED) #random
+IF(XDYN_NATIVE_BUILD)
+    # Boost.System is header-only since 1.69, and 1.89 stopped shipping a boost_system config
+    # package, so requesting it as a component is now a hard failure
+    SET(XDYN_BOOST_COMPONENTS program_options filesystem regex thread random chrono)
+ELSE()
+    SET(XDYN_BOOST_COMPONENTS program_options filesystem system regex thread random chrono)
+ENDIF()
+FIND_PACKAGE(Boost 1.53 COMPONENTS ${XDYN_BOOST_COMPONENTS} REQUIRED) #random
 IF(Boost_FOUND)
     MESSAGE(STATUS "Boost_INCLUDE_DIRS  : ${Boost_INCLUDE_DIRS}")
     MESSAGE(STATUS "Boost_LIBRARIES     : ${Boost_LIBRARIES}")
@@ -96,7 +106,11 @@ IF (WIN32)
 ELSE()
     SET(STATICORSHARED SHARED)
 ENDIF()
-SET(websocketpp_INCLUDE_DIR ${CMAKE_CURRENT_SOURCE_DIR}/ssc/ssc/websocketpp)
+IF(XDYN_NATIVE_BUILD)
+    INCLUDE(CMakeWebSocketPP)
+ELSE()
+    SET(websocketpp_INCLUDE_DIR ${CMAKE_CURRENT_SOURCE_DIR}/ssc/ssc/websocketpp)
+ENDIF()
 ADD_SUBDIRECTORY(ssc/ssc/data_source)
 ADD_SUBDIRECTORY(ssc/ssc/random_data_generator)
 ADD_SUBDIRECTORY(ssc/ssc/exception_handling)
@@ -207,6 +221,10 @@ TARGET_LINK_LIBRARIES(${TEST_EXE}
         ${GRPC_GRPCPP_UNSECURE}
         ${PROTOBUF_LIBPROTOBUF}
         ${Boost_FILESYSTEM_LIBRARY}
+        # h5_interface_tests calls H5::DataType::close directly. A static HDF5 arrives through
+        # x-dyn, but a shared one has to be named here.
+        ${HDF5_CXX_STATIC_LIBRARY}
+        ${HDF5_C_STATIC_LIBRARY}
         )
 SET_TARGET_PROPERTIES(${TEST_EXE} PROPERTIES LINKER_LANGUAGE CXX)
 

@@ -3,6 +3,7 @@
 # this fork replaces io_service with io_context throughout. Vendoring it here is what lets
 # xdyn build against modern Boost without modifying SSC.
 #
-# NOT included yet: those replacements are unconditional, so this copy requires Boost >= 1.66
-# and the docker image's Boost predates it. The switch happens with the Nix devShell.
+# Included only for XDYN_NATIVE_BUILD: those replacements are unconditional, so this copy needs
+# Boost >= 1.66, while the docker image keeps working against SSC's copy. Boost dropped
+# io_service entirely by 1.89, so SSC's copy no longer compiles there at all.
 SET(websocketpp_INCLUDE_DIR ${CMAKE_CURRENT_SOURCE_DIR}/websocketpp)
