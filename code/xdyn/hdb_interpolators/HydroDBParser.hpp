@@ -9,6 +9,8 @@
 #define __HYDRODBPARSERHPP__
 
 #include <array>
+#include <memory>
+#include <string>
 #include <vector>
 #include <Eigen/Dense>
 #include "TimestampedMatrix.hpp"
