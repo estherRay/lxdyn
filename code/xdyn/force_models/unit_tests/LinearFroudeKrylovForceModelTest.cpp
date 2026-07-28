@@ -37,6 +37,9 @@ TEST_F(LinearFroudeKrylovForceModelTest, encounter_frequency_example)
     BodyStates states;
     std::ofstream hdb_file("data.hdb");
     hdb_file << test_data::big_hdb();
+    // Read back below: without close(), the filebuf tail may not be on disk yet — libc++
+    // does not write through on large writes the way libstdc++ does
+    hdb_file.close();
     YamlRAO input;
     input.calculation_point = YamlCoordinates(0.696, 0, 1.418);
     input.hdb_filename = "data.hdb";
@@ -76,6 +79,7 @@ TEST_F(LinearFroudeKrylovForceModelTest, precal_r_example)
     BodyStates states;
     std::ofstream precalr_file("data.raodb.ini");
     precalr_file << test_data::precal();
+    precalr_file.close(); // Read back below: must be flushed to disk first
     YamlRAO input;
     input.calculation_point = YamlCoordinates(0, 0, 0);
     input.precal_filename = "data.raodb.ini";

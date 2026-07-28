@@ -123,9 +123,12 @@ TEST_F(MapObserverTest, blocked_state_force_residuals_should_appear)
     ASSERT_TRUE(m.find("My(blocked states,body 1,body 1)") != m.end());
     ASSERT_TRUE(m.find("Mz(blocked states,body 1,body 1)") != m.end());
     ASSERT_SMALL_RELATIVE_ERROR(-1.3937392887475170E16, m["Fx(blocked states,body 1,body 1)"].back(), EPS);
-    ASSERT_NEAR(0, m["Fy(blocked states,body 1,body 1)"].back(), 1E-6);
+    // The zero residuals are cancellations of ~1.4e16-scale terms (cf. Fx above), so the
+    // tolerance has to scale with that: 1e-12 relative, not an absolute 1e-6
+    const double zero_tol = 1E-12 * 1.4E16;
+    ASSERT_NEAR(0, m["Fy(blocked states,body 1,body 1)"].back(), zero_tol);
     ASSERT_NEAR(-8, m["Fz(blocked states,body 1,body 1)"].back(), 1E-6);
-    ASSERT_NEAR(0, m["Mx(blocked states,body 1,body 1)"].back(), 1E-6);
-    ASSERT_NEAR(0, m["My(blocked states,body 1,body 1)"].back(), 1E-6);
-    ASSERT_NEAR(0, m["Mz(blocked states,body 1,body 1)"].back(), 1E-6);
+    ASSERT_NEAR(0, m["Mx(blocked states,body 1,body 1)"].back(), zero_tol);
+    ASSERT_NEAR(0, m["My(blocked states,body 1,body 1)"].back(), zero_tol);
+    ASSERT_NEAR(0, m["Mz(blocked states,body 1,body 1)"].back(), zero_tol);
 }

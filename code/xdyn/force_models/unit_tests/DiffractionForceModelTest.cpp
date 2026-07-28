@@ -124,6 +124,7 @@ TEST_F(DiffractionForceModelTest, encounter_frequency_example)
     BodyStates states;
     std::ofstream hdb_file("data.hdb");
     hdb_file << test_data::bug_3210();
+    hdb_file.close(); // Read back below: must be flushed to disk first
     YamlRAO input;
     input.calculation_point = YamlCoordinates(0.696, 0, 1.418);
     input.hdb_filename = "data.hdb";
@@ -215,6 +216,7 @@ TEST_F(DiffractionForceModelTest, precal_r_example)
     BodyStates states;
     std::ofstream precalr_file("data.raodb.ini");
     precalr_file << test_data::precal();
+    precalr_file.close(); // Read back below: must be flushed to disk first
     YamlRAO input;
     input.calculation_point = YamlCoordinates(0, 0, 0);
     input.precal_filename = "data.raodb.ini";

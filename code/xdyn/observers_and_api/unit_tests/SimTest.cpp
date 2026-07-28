@@ -865,10 +865,13 @@ TEST_F(SimTest, bug_3230_advance_speed_not_taken_into_account_properly_for_diffr
     const double t0 = 0;
     const double T = 0.1;
     const double dt = 0.1;
-    std::ofstream hdb("ship_2008.HDB");
-    hdb << test_data::bug_3230_hdb();
-    std::ofstream stl("ship_2008.stl");
-    stl << test_data::cube();
+    // Scoped so both streams close before the simulation reads the files back
+    {
+        std::ofstream hdb("ship_2008.HDB");
+        hdb << test_data::bug_3230_hdb();
+        std::ofstream stl("ship_2008.stl");
+        stl << test_data::cube();
+    }
     const auto yaml = test_data::yml_bug_3230();
 
     ListOfObservers observers(parse_output(yaml));

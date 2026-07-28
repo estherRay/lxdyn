@@ -80,9 +80,12 @@ TEST_F(SimpleStationKeepingControllerTest, force_and_torque)
     const auto F = w.get_force(states, a.random<double>(), env, commands);
 
     ASSERT_NEAR(4*1*(5-x)-2*0.9*4*1*8, F.X(), EPS);
-    ASSERT_NEAR(5*9*(6-y)-2*0.85*5*3*9, F.Y(), 3 * EPS);
+    // Y and N tolerances: the expected values are ~2e2, so one ulp is ~3e-14 and the old
+    // 3*EPS was barely one ulp. <cmath> results differ in the last ulp between standard
+    // libraries, so allow a few tens of ulps of slack.
+    ASSERT_NEAR(5*9*(6-y)-2*0.85*5*3*9, F.Y(), 100 * EPS);
     ASSERT_NEAR(0, F.Z(), EPS);
     ASSERT_NEAR(0, F.K(), EPS);
     ASSERT_NEAR(0, F.M(), EPS);
-    ASSERT_NEAR(6*16*(7-psi)-2*0.8*6*4*10, F.N(), 3 * EPS);
+    ASSERT_NEAR(6*16*(7-psi)-2*0.8*6*4*10, F.N(), 100 * EPS);
 }

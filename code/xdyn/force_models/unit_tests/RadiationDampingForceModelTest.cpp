@@ -423,6 +423,7 @@ TEST_F(RadiationDampingForceModelTest, can_use_data_from_precal_r)
                              "    z: {value: 1.418, unit: m}\n";
     std::ofstream precalr_file("data.raodb.ini");
     precalr_file << test_data::precal();
+    precalr_file.close(); // Read back below: must be flushed to disk first
     RadiationDampingForceModel::Input input = RadiationDampingForceModel::parse(yaml);
     const EnvironmentAndFrames env;
     const std::string body_name = a.random<std::string>();
