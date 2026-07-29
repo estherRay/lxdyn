@@ -1,0 +1,13 @@
+set(CMAKE_SYSTEM_NAME @SYSTEM@)
+set(CMAKE_SYSTEM_PROCESSOR @PROCESSOR@)
+set(CMAKE_C_COMPILER @BIN@/zig-cc)
+set(CMAKE_CXX_COMPILER @BIN@/zig-cxx)
+set(CMAKE_RC_COMPILER @BIN@/zig-rc)
+
+# Only the closure's own install tree may satisfy find_package: any host hit is a libstdc++ build.
+set(CMAKE_FIND_ROOT_PATH @PREFIX@)
+set(CMAKE_FIND_ROOT_PATH_MODE_LIBRARY ONLY)
+set(CMAKE_FIND_ROOT_PATH_MODE_INCLUDE ONLY)
+
+# PROGRAM is the exception: the host protoc and grpc_cpp_plugin are found on PATH on purpose.
+set(CMAKE_FIND_ROOT_PATH_MODE_PROGRAM NEVER)

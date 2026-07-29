@@ -20,6 +20,14 @@ ssc_windows
 .zig-cache/
 *.o
 
+# The libc++ dependency closures built by tools/deps/, and the upstream sources they share
+# (libcxx-src/). Multi-GB: the recipes are committed, the result is not. Deliberately not under
+# build/ -- a clean must not discard a build measured in hours.
+#
+# No trailing slash: a closure shared between clones is reached by a symlink, and git matches
+# a symlink as a file however directory-like it looks.
+/libcxx-*
+
 # Test droppings: run_all_tests and the tutorials write these into their cwd,
 # which is the repo root. The Makefile writes .dockerignore there too.
 #

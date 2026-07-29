@@ -37,6 +37,22 @@ run = "cd build_native && ./run_all_tests"
 description = "Install into install_native/"
 run = "ninja -C build_native install"
 
+# Nothing in the tree consumes a closure yet. Override the destination with $XDYN_DEPS.
+# The cross flavors need the native one first — they borrow its protoc — and are deliberately
+# not declared as depending on it, since that would rebuild it on every invocation.
+
+[tasks."deps:native"]
+description = "Build the native libc++ dependency closure into libcxx-native/ (hours)"
+run = "tools/deps/build-all.sh native"
+
+[tasks."deps:aarch64"]
+description = "Build the aarch64-linux-musl closure into libcxx-aarch64/ (needs deps:native)"
+run = "tools/deps/build-all.sh aarch64"
+
+[tasks."deps:win"]
+description = "Build the x86_64-windows-gnu closure into libcxx-win/ (needs deps:native)"
+run = "tools/deps/build-all.sh win"
+
 [tasks.clean]
 description = "Remove the native build and install trees"
 run = "rm -rf build_native install_native"

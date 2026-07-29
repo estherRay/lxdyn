@@ -18,6 +18,9 @@
       pkgs = import nixpkgs { inherit system; };
       hdf5Cxx     = pkgs.hdf5.override  { cppSupport   = true; };  # FIND_PACKAGE(HDF5 COMPONENTS C CXX HL)
       boostStatic = pkgs.boost.override { enableStatic = true; };  # CMakeLists sets Boost_USE_STATIC_LIBS ON
+      # These are libstdc++ builds, and mkShell puts every one of their dev outputs on CPATH,
+      # which zig cc honours. tools/deps/ is immune only because it always names an explicit
+      # -target, which switches zig to its own bundled headers and nothing else.
       cxxLibs = [
         boostStatic hdf5Cxx
         pkgs.eigen_5 pkgs.gtest                       # eigen_5 clears an Eigen -Werror=uninitialized false positive
@@ -29,6 +32,7 @@
         nativeBuildInputs = [
           pkgs.cmake pkgs.ninja pkgs.pkg-config pkgs.git pkgs.mise
           pkgs.gfortran                                 # CMakeLists links gfortran for SSC's f2c
+          pkgs.zig pkgs.curl                            # tools/deps/ recipes; not used by the CMake lane
         ];
         buildInputs = cxxLibs;
 

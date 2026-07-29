@@ -1,0 +1,27 @@
+#!/bin/sh
+# Windows resource compiler shim. zig rc (resinator) is rc.exe-CLI-compatible, but zlib's MinGW
+# lane hardcodes a windres-style call (-D x -I dir -o out.obj -i in.rc), so translate that
+# dialect: -D→/d, -I→/i, -o→/fo, -i→input. rc.exe-style args (/d /i /fo, resinator /:opts) pass
+# through. resinator infers COFF output from the .obj output extension.
+in= out=
+args=
+add() { args="$args \"$1\""; }
+while [ $# -gt 0 ]; do
+  case "$1" in
+    -o) out=$2; shift 2 ;;
+    -i) in=$2; shift 2 ;;
+    -O) shift 2 ;;                       # windres output-format: inferred instead
+    -D) add /d; add "$2"; shift 2 ;;
+    -U) add /u; add "$2"; shift 2 ;;
+    -I) add /i; add "$2"; shift 2 ;;
+    -D*) add /d; add "${1#-D}"; shift ;;
+    -I*) add /i; add "${1#-I}"; shift ;;
+    --preprocessor*|--use-temp-file) shift ;;
+    /fo) add /fo; add "$2"; shift 2 ;;
+    /fo*|/d*|/u*|/i*|/v|/x|/n|/:*) add "$1"; shift ;;
+    -*) shift ;;                         # other windres opts: no resinator equivalent
+    *) if [ -z "$in" ]; then in=$1; else add "$1"; fi; shift ;;
+  esac
+done
+[ -n "$out" ] && { add /fo; add "$out"; }
+eval exec zig rc $args -- \"\$in\"

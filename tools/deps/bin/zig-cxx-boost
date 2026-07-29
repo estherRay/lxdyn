@@ -1,0 +1,11 @@
+#!/bin/sh
+# b2's clang toolset injects a --target= it guesses itself (x86_64-pc-linux, arm64-pc-linux),
+# and zig rejects those OS names. Drop every one and let zig-cxx supply the real triple.
+args=
+for a in "$@"; do
+  case "$a" in
+    --target=*) ;;
+    *) args="$args \"$a\"" ;;
+  esac
+done
+eval exec zig-cxx $args
