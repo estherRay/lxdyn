@@ -37,9 +37,10 @@ run = "cd build_native && ./run_all_tests"
 description = "Install into install_native/"
 run = "ninja -C build_native install"
 
-# Nothing in the tree consumes a closure yet. Override the destination with $XDYN_DEPS.
-# The cross flavors need the native one first — they borrow its protoc — and are deliberately
-# not declared as depending on it, since that would rebuild it on every invocation.
+# build.zig locates a closure through -Ddeps/$XDYN_DEPS, defaulting to libcxx-<flavor>/; the same
+# variable overrides where these tasks write one. The cross flavors need the native closure first
+# — they borrow its protoc — and are deliberately not declared as depending on it, since that
+# would rebuild it on every invocation.
 
 [tasks."deps:native"]
 description = "Build the native libc++ dependency closure into libcxx-native/ (hours)"
@@ -52,6 +53,16 @@ run = "tools/deps/build-all.sh aarch64"
 [tasks."deps:win"]
 description = "Build the x86_64-windows-gnu closure into libcxx-win/ (needs deps:native)"
 run = "tools/deps/build-all.sh win"
+
+# -fqemu/-fwine rather than the host's binfmt_misc: where a foreign binary is registered, zig runs
+# it transparently and this lane passes without either emulator being declared anywhere. That is a
+# property of the developer's machine, not of the repository.
+[tasks.cross]
+description = "Run the unit suite for aarch64-linux-musl and x86_64-windows-gnu (needs `nix develop .#cross`)"
+run = """
+zig build test -Dtarget=aarch64-linux-musl -fqemu
+zig build test -Dtarget=x86_64-windows-gnu -fwine
+"""
 
 [tasks.clean]
 description = "Remove the native build and install trees"

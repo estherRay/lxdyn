@@ -62,6 +62,12 @@ if [ "$FLAVOR" != native ]; then
 fi
 export PATH
 
+# find_program consults $CMAKE_PREFIX_PATH before $PATH, and `nix develop` exports one naming
+# every C++ library in the flake. That beats the prepend above: gRPC took the flake's protoc 35.1,
+# generated its sources with it, and compiled them against the closure's protobuf 31.1 headers.
+# A closure may not discover anything through the shell that happens to be running it.
+unset CMAKE_PREFIX_PATH CMAKE_PROGRAM_PATH CMAKE_INCLUDE_PATH CMAKE_LIBRARY_PATH CMAKE_FRAMEWORK_PATH
+
 # Native deliberately gets no toolchain file. Setting CMAKE_SYSTEM_NAME turns CMAKE_CROSSCOMPILING
 # on even when it names the host, and gRPC then hunts for a host protoc instead of building one.
 if [ -n "$CMAKE_SYSTEM" ]; then

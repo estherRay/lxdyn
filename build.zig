@@ -9,9 +9,9 @@ const std = @import("std");
 // dependency closure rebuilt as libc++ (yaml-cpp, HDF5-C++, Boost,
 // gRPC+abseil+protobuf, gtest) from merged archives.
 //
-// Only the native lane is exercised here. The cross-target code paths are present
-// but inert — they need closures that no commit has built yet, and resolveDepsRoot
-// warns rather than fails when one is missing.
+// Three targets are exercised: native, aarch64-linux-musl and x86_64-windows-gnu,
+// each against its own closure. A missing one warns rather than fails, so
+// `zig build --help` still works on a machine that has none.
 //
 // Codegen is produced by ./gen.sh into build/gen/ (build-toolchain.md §9.3) and
 // must be run before `zig build`. The libc++ deps live under a per-target closure

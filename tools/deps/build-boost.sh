@@ -10,11 +10,15 @@ cd "$SRC/boost_1_89_0"
 
 # One toolset name per flavor. b2 keys its object directories off the toolset, so a shared name
 # would have the flavors overwrite each other's objects in this shared source tree.
+#
+# The zig prefix is load-bearing, not decoration: b2 ships a builtin toolset called clang-win
+# (clang-cl against MSVC), so `using clang : win` loads tools/clang-win.jam and fails demanding
+# clang-cl.exe. Any flavor named after a platform b2 knows would collide the same way.
 cat > "$BUILD/user-config.jam" <<JAM
-using clang : $FLAVOR : $HERE/bin/zig-cxx-boost ;
+using clang : zig$FLAVOR : $HERE/bin/zig-cxx-boost ;
 JAM
 
-./b2 --user-config="$BUILD/user-config.jam" toolset=clang-$FLAVOR \
+./b2 --user-config="$BUILD/user-config.jam" toolset=clang-zig$FLAVOR \
   link=static runtime-link=shared threading=multi variant=release cxxstd=17 \
   $B2_ARGS --build-dir="$BUILD/boost" \
   --with-program_options --with-filesystem --with-regex --with-thread \
