@@ -64,6 +64,10 @@ zig build test -Dtarget=aarch64-linux-musl -fqemu
 zig build test -Dtarget=x86_64-windows-gnu -fwine
 """
 
+[tasks.gdb]
+description = "gdb a debug-built exe: mise run gdb -- run_all_tests --gtest_filter=Foo*"
+run = "sh tools/gdb.sh"
+
 [tasks.clean]
 description = "Remove the native build and install trees"
 run = "rm -rf build_native install_native"

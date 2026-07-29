@@ -37,6 +37,10 @@
             pkgs.cmake pkgs.ninja pkgs.pkg-config pkgs.git pkgs.mise
             pkgs.gfortran                                 # CMakeLists links gfortran for SSC's f2c
             pkgs.zig pkgs.curl                            # tools/deps/ recipes; not used by the CMake lane
+            pkgs.gdb                                      # mise run gdb. Without it the task silently
+                                                          # falls through to whatever gdb the host has,
+                                                          # or to none. .gdbinit needs one built with
+                                                          # Python for $_regex.
           ];
           buildInputs = cxxLibs;
 
