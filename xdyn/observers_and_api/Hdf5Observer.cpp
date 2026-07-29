@@ -6,8 +6,7 @@
 #include "xdyn/interface_hdf5/h5_version.hpp"
 #include "xdyn/interface_hdf5/h5_tools.hpp"
 
-#include "demoMatLab.hpp"
-#include "demoPython.hpp"
+#include "demo_scripts.hpp"
 
 
 Hdf5Addressing::Hdf5Addressing(

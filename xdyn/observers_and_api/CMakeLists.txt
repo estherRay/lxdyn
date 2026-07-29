@@ -1,13 +1,14 @@
 CMAKE_MINIMUM_REQUIRED(VERSION 2.8.8)
 PROJECT(observers_and_api)
 
-INCLUDE(CMakeListsGenerateDemoMatLab.txt)
-INCLUDE(CMakeListsGenerateDemoPython.txt)
+# #embed is C++26; both compilers take it earlier as an extension, and this project
+# builds with -pedantic-errors, which promotes that to an error. Scoped to the one file
+# that needs it -- build.zig passes clang the same exemption as -Wno-c23-extensions.
+SET_SOURCE_FILES_PROPERTIES(demo_scripts.cpp PROPERTIES COMPILE_OPTIONS "-Wno-c++26-extensions")
 
 SET(SRC
-    ${CMAKE_BINARY_DIR}/demoMatLab.cpp
-    ${CMAKE_BINARY_DIR}/demoPython.cpp
     ConfBuilder.cpp
+    demo_scripts.cpp
     CoSimulationObserver.cpp
     CsvObserver.cpp
     DictObserver.cpp
