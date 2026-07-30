@@ -1,8 +1,10 @@
 # This Makefile builds the xdyn wheel from the xdyn python shared library.
 #
-# Testing and linting the wrapper no longer live here: `mise run python:matrix` builds and tests
-# against each supported Python, and `mise run python:lint` replaces isort/black/pylint. Only the
-# wheel build remains, until it moves to `mise run python:wheel` too.
+# It is what remains after the wrapper's other lanes moved to mise: python:matrix builds and tests
+# against each supported Python, python:lint replaces isort/black/pylint, python:wheel packages the
+# wheel and python:doc builds the Sphinx API reference. What keeps this file alive is that
+# Dockerfile_deploy consumes a cp39 wheel, and 3.9 is below the floor pyproject.toml now sets — so
+# the docker wheel build outlives the rest until the deploy image is replaced.
 
 DIR := $(notdir $(shell pwd))
 PYTHON=python3
@@ -56,10 +58,6 @@ create_docker_image_ubuntu2204_py310: xdyn.deb xdyngrpc
 		--build-arg PYTHON_MINOR_VERSION=10 \
 		-t xdyn-ubuntu2204-py310 \
 		.
-
-doc: ## Create documentation with Sphinx
-doc: debian_11_py309_package
-	@make -C doc
 
 package: ## Create the wheel package
 	make ${DOCKER_IMAGE_BUILD}

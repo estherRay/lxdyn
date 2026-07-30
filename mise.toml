@@ -119,6 +119,88 @@ for V in ${XDYN_PYTHON_VERSIONS:-3.10 3.13 3.15}; do
 done
 '''
 
+[tasks."python:wheel"]
+description = "Package the module as a wheel and check it in a clean venv"
+depends = ["python:build"]
+# setup.py's build_ext is a no-op subclass: it packages a *prebuilt* .so found at the path
+# distutils would have written one to. That path is not stable — it was lib.linux-x86_64-3.10 and
+# is lib.linux-x86_64-cpython-310 on current setuptools — so ask setuptools instead of hardcoding.
+#
+# Stripping happens on the way into the wheel, never in the build tree: `mise run gdb` needs the
+# debug info that makes the built .so 100x larger than the shipped one.
+run = '''
+set -e
+SO_DIR=$(sh tools/build-dir.sh)/python
+PY=$PWD/build/venv-wrapper/bin/python
+cd xdyn_wrapper_python
+DEST=$("$PY" -c "
+from setuptools import Extension
+from setuptools.dist import Distribution
+from setuptools.command.build_ext import build_ext
+cmd = build_ext(Distribution({'name': 'xdyn', 'ext_modules': [Extension('xdyn', sources=[])]}))
+cmd.initialize_options(); cmd.finalize_options()
+print(cmd.get_ext_fullpath('xdyn'))
+")
+mkdir -p "$(dirname "$DEST")"
+# By EXT_SUFFIX, not a glob: SO_DIR legitimately holds one .so per ABI it has been built for.
+SO=$SO_DIR/xdyn$("$PY" -c 'import sysconfig; print(sysconfig.get_config_var("EXT_SUFFIX"))')
+cp "$SO" "$DEST"
+# Not `zig objcopy --strip-debug`: it exists and answers "unimplemented" on this .so (zig 0.16).
+# Warn rather than fail if neither stripper is around -- a fat wheel still works, and this must
+# not be what blocks packaging.
+for s in llvm-strip strip; do
+    if command -v "$s" > /dev/null 2>&1; then "$s" --strip-debug "$DEST" && break; fi
+    [ "$s" = strip ] && echo "warning: no llvm-strip/strip on PATH -- shipping unstripped"
+done
+GIT_VERSION=$(git describe --abbrev=0 --tag --always | cut -f2 -dv) "$PY" setup.py --quiet bdist_wheel
+ls -la dist/*.whl
+cd ..
+# The wheel is the deliverable, so check the deliverable: a venv with numpy and a test runner and
+# nothing else -- no pybind11, no source tree on sys.path -- must import it and pass all 285.
+# --no-deps because the wheel declares none; any it grows should fail here loudly rather than be
+# resolved from PyPI behind the check's back.
+UV_PROJECT_ENVIRONMENT=build/venv-wheelcheck uv sync --only-group wheelcheck --quiet
+uv pip install --python build/venv-wheelcheck/bin/python --quiet --reinstall --no-deps \
+    xdyn_wrapper_python/dist/*.whl
+mkdir -p build/python-tests
+cd build/python-tests
+../venv-wheelcheck/bin/python -m pytest -q ../../xdyn_wrapper_python/unit_tests
+'''
+
+[tasks."python:doc"]
+description = "Build the wrapper's Sphinx API documentation -> build/python-doc/html/"
+depends = ["python:build"]
+# autosummary has to import the extension module to introspect it. That, and only that, is why
+# this used to need a container with a wheel installed in it: PYTHONPATH to the build output does
+# the same job, so the doc build no longer needs docker or a wheel at all.
+#
+# sphinx-quickstart runs every time because conf.py is not committed, which is how this worked
+# before. Committing a conf.py instead would be the obvious next simplification.
+run = '''
+set -e
+UV_PROJECT_ENVIRONMENT=build/venv-doc uv sync --only-group doc --quiet
+SO_DIR=$(sh tools/build-dir.sh)/python
+PY=$PWD/build/venv-doc/bin/python
+DOC=$PWD/xdyn_wrapper_python/doc
+OUT=$PWD/build/python-doc
+GIT_VERSION=$(git describe --abbrev=0 --tag --always | cut -f2 -dv)
+rm -rf "$OUT"
+mkdir -p "$OUT"
+cd "$OUT"
+"$PY" -m sphinx.cmd.quickstart --quiet --project xdyn --author Sirehna \
+    -v "$GIT_VERSION" -r "$GIT_VERSION" -l en --sep \
+    --ext-autodoc --ext-doctest --ext-intersphinx --ext-todo \
+    --extensions=sphinx.ext.autosummary \
+    --extensions=sphinx_autopackagesummary \
+    --extensions=myst_parser src
+printf '\nautosummary_generate = True\nautoclass_content = "class"\n' >> src/source/conf.py
+cp "$DOC"/index.rst "$DOC"/api.rst "$DOC"/xdyn.rst src/source/
+mkdir -p src/source/_templates/autosummary
+cp "$DOC"/autosummary/* src/source/_templates/autosummary/
+PYTHONPATH="$SO_DIR" "$PY" -m sphinx -b html src/source html
+echo "OK -> $OUT/html/index.html"
+'''
+
 [tasks."python:lint"]
 description = "Check the wrapper's Python with ruff"
 # `ruff check` only: ruff's formatter is not byte-compatible with the black the retired image

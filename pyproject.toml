@@ -14,8 +14,15 @@ package = false
 # pybind11 2.10.0 is a wheel-ABI decision, not a reproducibility pin: it is what the published
 # wheel is built with. numpy<2 is Hazard P — pybind11 2.10 SIGSEGVs on the first ndarray
 # argument against numpy 2, with no diagnostic. See docs/hazards.md.
-wrapper = ["pybind11[global]==2.10.0", "numpy<2", "pytest"]
+wrapper = ["pybind11[global]==2.10.0", "numpy<2", "pytest", "setuptools", "wheel"]
 lint = ["ruff"]
+# The clean room python:wheel imports the finished wheel into: numpy, and nothing else. numpy is
+# named because the wheel does not declare it — setup.py sets no install_requires, so `pip install
+# xdyn` yields a module whose Eigen casters need numpy and whose metadata never says so.
+wheelcheck = ["numpy<2", "pytest"]
+# numpy is not optional here either: autosummary imports the extension module, and importing it
+# without numpy fails at init with "ImportError: initialization failed".
+doc = ["sphinx", "sphinx-autopackagesummary", "myst-parser", "numpy<2"]
 
 [tool.ruff]
 include = ["xdyn_wrapper_python/**/*.py"]
