@@ -37,14 +37,11 @@
             pkgs.cmake pkgs.ninja pkgs.pkg-config pkgs.git pkgs.mise
             pkgs.gfortran                                 # CMakeLists links gfortran for SSC's f2c
             pkgs.zig pkgs.curl                            # tools/deps/ recipes; not used by the CMake lane
-            pkgs.uv                                       # Python environments for `mise run python:*`, and
-                                                          # the only owner of them, interpreters included:
-                                                          # pyproject.toml + uv.lock pin both. Deliberately
-                                                          # no pkgs.python* beside it — a nixpkgs interpreter
-                                                          # exports its own PYTHONPATH into every *other*
-                                                          # interpreter in the shell, which is how a 3.10 venv
-                                                          # came to report a cpython-313 ABI tag and emit a
-                                                          # module nothing could import.
+            pkgs.uv                                       # owns the Python envs, interpreters included. No
+                                                          # pkgs.python* beside it: a nixpkgs interpreter
+                                                          # exports PYTHONPATH into every other interpreter
+                                                          # in the shell, which once made a 3.10 venv report
+                                                          # a cpython-313 ABI tag.
             pkgs.gdb                                      # mise run gdb. Without it the task silently
                                                           # falls through to whatever gdb the host has,
                                                           # or to none. .gdbinit needs one built with

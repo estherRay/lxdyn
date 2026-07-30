@@ -70,25 +70,14 @@ run = "sh tools/gdb.sh"
 
 [tasks."python:setup"]
 description = "Python env for the pybind11 wrapper (pinned pybind11 + numpy)"
-# `uv sync`, not `uv pip install`: the interpreter and the packages both come from
-# pyproject.toml + the committed uv.lock, so this venv is reproducible rather than "whatever
-# PyPI had today". The two pins in the `wrapper` group are load-bearing and their reasons are
-# written down there. Under build/ so it goes with the build tree.
 run = 'UV_PROJECT_ENVIRONMENT=build/venv-wrapper uv sync --only-group wrapper --quiet'
 
 [tasks."python:build"]
 description = "Build the pybind11 extension module -> build/<triple>/python/"
 depends = ["python:setup"]
-# `import` is the check, not nm: the module links no libpython, so Py* symbols stay undefined
-# on purpose and resolve against the interpreter. A *missing xdyn* symbol therefore also links
-# quietly and only shows up at import time — which is what this runs. It also exercises module
-# init, where the ~700 bindings get registered.
+# The import is the check: the module links no libpython, so a missing xdyn symbol links
+# quietly and only surfaces here. It also exercises module init and its ~700 registrations.
 run = '''
-# -Dpython explicitly rather than letting build.zig probe, even though the probe looks only at
-# build/venv-wrapper: naming the interpreter is what makes this task readable. Building for the
-# wrong ABI is not even a build error -- the install dir just accumulates a second
-# xdyn.cpython-3XX-*.so, and whichever one matches the running interpreter gets imported. That
-# is why the probe has no bare-`python3` fallback either.
 PY=$PWD/build/venv-wrapper/bin/python
 zig build python -Dpython="$PY" \
     -Dgit-version="$(git describe --abbrev=0 --tag --always | cut -f2 -dv)"
@@ -102,15 +91,48 @@ echo "OK -> $SO"
 [tasks."python:test"]
 description = "Run the 285 Python binding tests against the built module"
 depends = ["python:build"]
-# Out of tree: several tests write YAML and CSV next to the cwd. -t is the wrapper root so the
-# unit_tests package imports as a package, -s the directory to walk.
+# Out of tree: several tests write YAML and CSV next to the cwd. The suite is named explicitly
+# because pytest resolves pyproject's testpaths against the invocation directory, not rootdir.
 run = '''
 SO_DIR=$(sh tools/build-dir.sh)/python
-WRAPPER=$PWD/xdyn_wrapper_python
 mkdir -p build/python-tests
 cd build/python-tests
-PYTHONPATH="$SO_DIR" ../venv-wrapper/bin/python -m unittest discover \
-    -s "$WRAPPER/unit_tests" -t "$WRAPPER"
+PYTHONPATH="$SO_DIR" ../venv-wrapper/bin/python -m pytest ../../xdyn_wrapper_python/unit_tests
+'''
+
+[tasks."python:matrix"]
+description = "Build and test the wrapper against each supported Python (3.10, 3.13, 3.15)"
+# What the retired Dockerfile_deb11_py3yz_{pybind,test} pair covered as Python x distro. The
+# distro axis is gone: zig targets a glibc floor and links libc++ statically, so only the
+# interpreter varies. numpy<2 has no wheel past 3.12, so the first sync per version builds it.
+run = '''
+set -e
+for V in ${XDYN_PYTHON_VERSIONS:-3.10 3.13 3.15}; do
+    echo "--- Python $V"
+    UV_PROJECT_ENVIRONMENT=build/venv-wrapper-$V uv sync --only-group wrapper --python "$V" --quiet
+    PY=$PWD/build/venv-wrapper-$V/bin/python
+    zig build python -Dpython="$PY" \
+        -Dgit-version="$(git describe --abbrev=0 --tag --always | cut -f2 -dv)"
+    SO_DIR=$(sh tools/build-dir.sh)/python
+    mkdir -p build/python-tests
+    (cd build/python-tests && PYTHONPATH="$SO_DIR" "$PY" -m pytest -q ../../xdyn_wrapper_python/unit_tests)
+done
+'''
+
+[tasks."python:lint"]
+description = "Check the wrapper's Python with ruff"
+# `ruff check` only: ruff's formatter is not byte-compatible with the black the retired image
+# pinned, so enforcing it is a one-time reformat that belongs in its own commit.
+run = '''
+UV_PROJECT_ENVIRONMENT=build/venv-lint uv sync --only-group lint --quiet
+build/venv-lint/bin/ruff check
+'''
+
+[tasks."python:format"]
+description = "Reformat the wrapper's Python with ruff (not enforced -- see python:lint)"
+run = '''
+UV_PROJECT_ENVIRONMENT=build/venv-lint uv sync --only-group lint --quiet
+build/venv-lint/bin/ruff format
 '''
 
 [tasks.clean]

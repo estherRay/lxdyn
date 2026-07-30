@@ -1,49 +1,35 @@
-# Python for the *repository* — the interpreters and packages the build and the test suites
-# need. Not the published wheel: that is xdyn_wrapper_python/setup.py, whose compiled half
-# build.zig produces, and which is deliberately left alone here.
-#
-# Nothing here is installed. This is a virtual project; only its dependency groups are real,
-# and each group is one venv:
-#
-#   wrapper      build/venv-wrapper    the pybind11 build and the 285 binding tests
-#
-# The suites that arrive with later commits get their own groups beside it. Naming versions
-# here rather than in a `uv pip install` line is the point: uv.lock is committed next to this
-# file and the mise tasks `uv sync` from it, so every environment is reproducible from two
-# tracked files instead of from whatever PyPI served that day.
-#
-# NOT a uv workspace, though that is the shape this wants eventually: making
-# xdyn_wrapper_python a member means giving it a pyproject.toml and moving the wheel build off
-# setup.py, which is a packaging change with its own decisions (abi3, metadata, the missing
-# numpy runtime dependency). This file is the reproducibility half, on its own.
-
 [project]
 name = "xdyn-dev"
 version = "0"
 description = "Development environments for the xdyn repository — not a distributable package"
 
-# Exact down to the patch, matching `.python-version`, so a new patch release cannot change
-# what the suite runs on without a commit — the same kind of pin as zig in flake.nix.
-#
-# 3.10 because that is the interpreter the xdyn-ubuntu2204-py310 image builds the published
-# wheel against, and the wrapper's ABI is a property of the wheel rather than of this repo.
-# Later commits add groups with their *own* reasons to be here; check them before moving it.
-requires-python = "==3.10.*"
+requires-python = ">=3.10,<3.16"
 
 dependencies = []
 
 [tool.uv]
-# Virtual project: there is no `xdyn-dev` package to build or install, only groups to sync.
 package = false
 
 [dependency-groups]
-# Two load-bearing pins, and neither is a reproducibility measure — do not treat them as
-# sweepable into the lock's job:
-#   - pybind11 2.10.0 is what Dockerfile_deb11_py3yz_pybind builds the published wheel with.
-#     Bumping it is a wheel-ABI decision. `[global]` is what puts the headers under the venv's
-#     prefix, which is where build.zig's probe looks for them.
-#   - numpy<2 is Hazard P. pybind11 2.10 predates NumPy 2's C API (support landed in 2.12);
-#     against numpy 2 its Eigen type caster calls through a null entry in the numpy API table
-#     and SIGSEGVs on the first ndarray argument, with no diagnostic. A constraint on the
-#     *shipped wheel*, not just on the tests.
-wrapper = ["pybind11[global]==2.10.0", "numpy<2"]
+# pybind11 2.10.0 is a wheel-ABI decision, not a reproducibility pin: it is what the published
+# wheel is built with. numpy<2 is Hazard P — pybind11 2.10 SIGSEGVs on the first ndarray
+# argument against numpy 2, with no diagnostic. See docs/hazards.md.
+wrapper = ["pybind11[global]==2.10.0", "numpy<2", "pytest"]
+lint = ["ruff"]
+
+[tool.ruff]
+include = ["xdyn_wrapper_python/**/*.py"]
+line-length = 100
+target-version = "py310"
+
+[tool.ruff.lint]
+select = ["I", "W"]
+
+[tool.ruff.lint.isort]
+known-third-party = ["xdyn"]
+
+[tool.pytest.ini_options]
+testpaths = ["xdyn_wrapper_python/unit_tests"]
+filterwarnings = [
+    "ignore:cannot collect 'test_ship_hdb':pytest.PytestCollectionWarning",
+]
