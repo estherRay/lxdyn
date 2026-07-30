@@ -68,6 +68,51 @@ zig build test -Dtarget=x86_64-windows-gnu -fwine
 description = "gdb a debug-built exe: mise run gdb -- run_all_tests --gtest_filter=Foo*"
 run = "sh tools/gdb.sh"
 
+[tasks."python:setup"]
+description = "Python env for the pybind11 wrapper (pinned pybind11 + numpy)"
+# `uv sync`, not `uv pip install`: the interpreter and the packages both come from
+# pyproject.toml + the committed uv.lock, so this venv is reproducible rather than "whatever
+# PyPI had today". The two pins in the `wrapper` group are load-bearing and their reasons are
+# written down there. Under build/ so it goes with the build tree.
+run = 'UV_PROJECT_ENVIRONMENT=build/venv-wrapper uv sync --only-group wrapper --quiet'
+
+[tasks."python:build"]
+description = "Build the pybind11 extension module -> build/<triple>/python/"
+depends = ["python:setup"]
+# `import` is the check, not nm: the module links no libpython, so Py* symbols stay undefined
+# on purpose and resolve against the interpreter. A *missing xdyn* symbol therefore also links
+# quietly and only shows up at import time — which is what this runs. It also exercises module
+# init, where the ~700 bindings get registered.
+run = '''
+# -Dpython explicitly rather than letting build.zig probe, even though the probe looks only at
+# build/venv-wrapper: naming the interpreter is what makes this task readable. Building for the
+# wrong ABI is not even a build error -- the install dir just accumulates a second
+# xdyn.cpython-3XX-*.so, and whichever one matches the running interpreter gets imported. That
+# is why the probe has no bare-`python3` fallback either.
+PY=$PWD/build/venv-wrapper/bin/python
+zig build python -Dpython="$PY" \
+    -Dgit-version="$(git describe --abbrev=0 --tag --always | cut -f2 -dv)"
+SO_DIR=$(sh tools/build-dir.sh)/python
+SO=$SO_DIR/xdyn$("$PY" -c 'import sysconfig; print(sysconfig.get_config_var("EXT_SUFFIX"))')
+[ -f "$SO" ] || { echo "expected $SO, got:"; ls "$SO_DIR"; exit 1; }
+PYTHONPATH="$SO_DIR" "$PY" -c "import xdyn; print('import ok, xdyn', xdyn.__version__)"
+echo "OK -> $SO"
+'''
+
+[tasks."python:test"]
+description = "Run the 285 Python binding tests against the built module"
+depends = ["python:build"]
+# Out of tree: several tests write YAML and CSV next to the cwd. -t is the wrapper root so the
+# unit_tests package imports as a package, -s the directory to walk.
+run = '''
+SO_DIR=$(sh tools/build-dir.sh)/python
+WRAPPER=$PWD/xdyn_wrapper_python
+mkdir -p build/python-tests
+cd build/python-tests
+PYTHONPATH="$SO_DIR" ../venv-wrapper/bin/python -m unittest discover \
+    -s "$WRAPPER/unit_tests" -t "$WRAPPER"
+'''
+
 [tasks.clean]
 description = "Remove the native build and install trees"
 run = "rm -rf build_native install_native"

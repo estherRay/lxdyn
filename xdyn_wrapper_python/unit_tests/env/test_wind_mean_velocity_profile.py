@@ -110,7 +110,10 @@ class UniformWindVelocityProfileTest(unittest.TestCase):
         data.z_ref = 10
         wind_model = LogWindVelocityProfile(data)
         position = self.rng.random_vector_of_double().of_size(3)()
-        position[2] = -position[2]
+        # -abs, not -: the random draw is signed, so negating it leaves z positive half the
+        # time. The expected value below then takes log() of a negative number and compares
+        # nan against xdyn's (correct) zero wind. Flaky by construction, ~50% of runs.
+        position[2] = -abs(position[2])
         time = self.rng.random_double()()
         wind_vector = wind_model.get_wind(position, time)
         wind_velocity = (

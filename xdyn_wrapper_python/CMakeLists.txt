@@ -53,9 +53,11 @@ TARGET_INCLUDE_DIRECTORIES(${PYTHON_PACKAGE_NAME} PRIVATE $<BUILD_INTERFACE:${ya
 TARGET_INCLUDE_DIRECTORIES(${PYTHON_PACKAGE_NAME} PRIVATE $<BUILD_INTERFACE:${hdb_interpolators_INCLUDE_DIRS}>)
 TARGET_INCLUDE_DIRECTORIES(${PYTHON_PACKAGE_NAME} PRIVATE $<BUILD_INTERFACE:${core_INCLUDE_DIRS}>)
 TARGET_INCLUDE_DIRECTORIES(${PYTHON_PACKAGE_NAME} PRIVATE $<BUILD_INTERFACE:${interface_hdf5_INCLUDE_DIRS}>)
-TARGET_INCLUDE_DIRECTORIES(${PYTHON_PACKAGE_NAME} PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/../executables)
-TARGET_INCLUDE_DIRECTORIES(${PYTHON_PACKAGE_NAME} PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/../listeners_and_controllers)
-TARGET_INCLUDE_DIRECTORIES(${PYTHON_PACKAGE_NAME} PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/../observers_and_api)
+# NB: ../executables, ../listeners_and_controllers and ../observers_and_api used to be
+# listed here. Those directories moved under ../xdyn/ when code/ came to the top level, and
+# the lines have pointed at nothing since; the sources reach the headers through the ../
+# root above, which is why nobody noticed. Removed rather than repaired — see build.zig's
+# `python` step, which is where this target is built now.
 TARGET_INCLUDE_DIRECTORIES(${PYTHON_PACKAGE_NAME} SYSTEM PRIVATE $<BUILD_INTERFACE:${eigen_INCLUDE_DIRS}>)
 TARGET_INCLUDE_DIRECTORIES(${PYTHON_PACKAGE_NAME} SYSTEM PRIVATE $<BUILD_INTERFACE:${Boost_INCLUDE_DIRS}>)
 TARGET_INCLUDE_DIRECTORIES(${PYTHON_PACKAGE_NAME} SYSTEM PRIVATE $<BUILD_INTERFACE:${YAML_CPP_INCLUDE_DIRS}>)

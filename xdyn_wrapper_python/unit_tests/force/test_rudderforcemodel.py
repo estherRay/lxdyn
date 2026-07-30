@@ -32,6 +32,10 @@ from xdyn.ssc.random import DataGenerator
 EPS: float = 1e-2
 NB_TRIALS: int = 100
 BODY: str = "body 1"
+# Relative tolerance for non-regression values that used to be compared with assertEqual.
+# Tight enough to still catch a real change (~1e4 ULP), loose enough to survive a different
+# compiler's instruction selection. EPS above is the physics tolerance and is far too lax.
+REL_EPS: float = 1e-12
 
 
 def get_env() -> EnvironmentAndFrames:
@@ -173,8 +177,11 @@ class RudderForceModelTest(unittest.TestCase):
         riw = RudderModel(parameters, 1024, 0.75)
         area = 1.467
         v = riw.get_wrench(3, 4, 0.5, area)
-        self.assertEqual(-2021.4412785509464, v[0])
-        self.assertEqual(1757.2988992064641, v[1])
+        # assertAlmostEqual on the two computed components: assertEqual asks for a
+        # bit-identical double, which no two compilers owe each other (this one came out
+        # 1 ULP off). The exact zeros below stay exact -- those are not computed.
+        self.assertAlmostEqual(-2021.4412785509464, v[0], delta=REL_EPS * abs(v[0]))
+        self.assertAlmostEqual(1757.2988992064641, v[1], delta=REL_EPS * abs(v[1]))
         self.assertEqual(0, v[2])
         self.assertEqual(0, v[3])
         self.assertEqual(0, v[4])
@@ -269,12 +276,14 @@ class RudderForceModelTest(unittest.TestCase):
         b.update_kinematics(s, env.k)
         commands = {"rpm": 200, "P/D": 1.2, "beta": np.pi / 6}
         F = model.get_force(states, t, env, commands)
-        self.assertEqual(2208573.9553180891, F.X())
-        self.assertEqual(777997.67996840423, F.Y())
+        # Same as get_wrench above: computed components get a relative tolerance, the
+        # structural zeros keep assertEqual.
+        self.assertAlmostEqual(2208573.9553180891, F.X(), delta=REL_EPS * abs(F.X()))
+        self.assertAlmostEqual(777997.67996840423, F.Y(), delta=REL_EPS * abs(F.Y()))
         self.assertEqual(0, F.Z())
-        self.assertEqual(-2793416.1021430148, F.K())
+        self.assertAlmostEqual(-2793416.1021430148, F.K(), delta=REL_EPS * abs(F.K()))
         self.assertEqual(0, F.M())
-        self.assertEqual(-855797.44796524453, F.N())
+        self.assertAlmostEqual(-855797.44796524453, F.N(), delta=REL_EPS * abs(F.N()))
 
 
 if __name__ == "__main__":

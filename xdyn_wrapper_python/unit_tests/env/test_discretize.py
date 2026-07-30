@@ -558,15 +558,18 @@ class DiscretizeTest(unittest.TestCase):
             self.assertEqual(nb_of_zeros + 2, len(ret))
             for k in range(nb_of_zeros):
                 self.assertEqual(0, ret[k])
+            # Scaled delta, like the two assertions in the test above: the areas here reach
+            # ~1e13, where a flat EPS of 1e-10 is well under one double ULP and so demands a
+            # bit-identical result. That holds for exactly one compiler on one machine.
             self.assertAlmostEqual(
                 0.5 * (xs[nb_of_zeros] - xs[nb_of_zeros - 1]) * ya,
                 ret[nb_of_zeros],
-                delta=EPS,
+                delta=EPS * max(1.0, abs(ret[nb_of_zeros])),
             )
             self.assertAlmostEqual(
                 ret[nb_of_zeros] + (xs[nb_of_zeros + 1] - xs[nb_of_zeros]) * ya,
                 ret[nb_of_zeros + 1],
-                delta=EPS,
+                delta=EPS * max(1.0, abs(ret[nb_of_zeros + 1])),
             )
 
     def test_can_find_given_area_in_area_curve(self):

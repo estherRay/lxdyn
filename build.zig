@@ -614,8 +614,8 @@ fn addPythonWrapper(
     lib.step.dependOn(gen_step);
     // libpython is deliberately NOT linked — the standard Linux contract is that Py* stays
     // undefined and resolves against the already-loaded interpreter. The cost is that a
-    // *missing xdyn* symbol also links quietly and only shows up at import; `mise run
-    // python:build` greps the undefined set for anything that is not Py*/libc to catch that.
+    // *missing xdyn* symbol also links quietly and only shows up at import, which is why
+    // `mise run python:build` finishes by importing the module it just built.
     lib.linker_allow_shlib_undefined = true;
 
     // CPython does not care where the file is, only what it is called, so install under a

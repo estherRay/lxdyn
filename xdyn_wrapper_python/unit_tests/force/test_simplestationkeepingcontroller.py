@@ -66,7 +66,9 @@ class SimpleStationKeepingControllerTest(unittest.TestCase):
 
         commands = {"x_co": 5, "y_co": 6, "psi_co": 7}
         F = w.get_force(states, self.rng.random_double()(), env, commands)
-        assert_equal = lambda x, y: self.assertAlmostEqual(x, y, delta=EPS)
+        # Delta scaled to the magnitude: EPS alone is 1e-14, which for the ~170 N.m moment
+        # below sits under one double ULP and so asks for a bit-identical result.
+        assert_equal = lambda x, y: self.assertAlmostEqual(x, y, delta=EPS * max(1.0, abs(x)))
         assert_equal(4 * 1 * (5 - x) - 2 * 0.9 * 4 * 1 * 8, F.X())
         assert_equal(5 * 9 * (6 - y) - 2 * 0.85 * 5 * 3 * 9, F.Y())
         assert_equal(0, F.Z())

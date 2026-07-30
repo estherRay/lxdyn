@@ -76,3 +76,7 @@ xdyn.deb
 *.swp
 __pycache__
 .wine
+
+# uv's default project environment. The mise tasks all set UV_PROJECT_ENVIRONMENT into build/,
+# but a bare `uv sync` in the repo root drops a venv here; pyproject.toml and uv.lock are tracked.
+/.venv/

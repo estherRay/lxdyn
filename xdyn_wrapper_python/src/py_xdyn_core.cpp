@@ -317,7 +317,9 @@ void py_add_module_xdyn_core(py::module& m0)
         .def("get_delta_F", &BlockedDOF::get_delta_F)
         ;
 
-    py::class_<Body>(m, "Body")
+    // shared_ptr holder (see the PointMatrix comment in py_ssc.cpp): BodyPtr is what the
+    // BodyBuilder returns and what every method below is called on.
+    py::class_<Body, BodyPtr>(m, "Body")
         //.def(py::init<const size_t /*idx*/, const BlockedDOF& /*blocked_states*/, const YamlFilteredStates& /*filtered_states*/>(),
         //    py::arg("idx"), py::arg("blocked_states"), py::arg("filtered_states"))
         //.def(py::init<const BodyStates& /*states*/, const size_t /*idx*/, const BlockedDOF& /*blocked_states*/, const YamlFilteredStates& /*filtered_states*/>(),
@@ -375,7 +377,7 @@ void py_add_module_xdyn_core(py::module& m0)
         .def("reset_history", &Body::reset_history)
         ;
 
-    py::class_<BodyWithoutSurfaceForces, Body>(m, "BodyWithoutSurfaceForces")
+    py::class_<BodyWithoutSurfaceForces, Body, std::shared_ptr<BodyWithoutSurfaceForces>>(m, "BodyWithoutSurfaceForces")
         .def(py::init<const size_t /*idx*/, const BlockedDOF& /*blocked_states*/, const YamlFilteredStates& /*filtered_states*/>(),
             py::arg("idx") = 0,
             py::arg("blocked_states") = BlockedDOF(""),
@@ -399,7 +401,7 @@ void py_add_module_xdyn_core(py::module& m0)
             py::arg("t"))
         ;
 
-    py::class_<BodyWithSurfaceForces, Body>(m, "BodyWithSurfaceForces")
+    py::class_<BodyWithSurfaceForces, Body, std::shared_ptr<BodyWithSurfaceForces>>(m, "BodyWithSurfaceForces")
         .def(py::init<const size_t /*idx*/, const BlockedDOF& /*blocked_states*/, const YamlFilteredStates& /*filtered_states*/>(),
             py::arg("idx") = 0,
             py::arg("blocked_states") = BlockedDOF(""),
@@ -657,7 +659,9 @@ void py_add_module_xdyn_core(py::module& m0)
     py::class_<SurfaceElevationPtr>(m, "SurfaceElevationPtr")
         ;
 
-    py::class_<SurfaceElevationInterface>(m, "SurfaceElevationInterface")
+    // shared_ptr holder (see the PointMatrix comment in py_ssc.cpp): EnvironmentAndFrames::w
+    // is a SurfaceElevationPtr.
+    py::class_<SurfaceElevationInterface, SurfaceElevationPtr>(m, "SurfaceElevationInterface")
         //.def(py::init<const ssc::kinematics::PointMatrixPtr& /*output_mesh*/,
         //              const std::pair<std::size_t,std::size_t>& /*output_mesh_size*/>(),
         //              py::arg("output_mesh"),
@@ -787,7 +791,7 @@ void py_add_module_xdyn_core(py::module& m0)
 //          */
 
 
-   py::class_<SurfaceElevationFromWaves, SurfaceElevationInterface>(m, "SurfaceElevationFromWaves")
+   py::class_<SurfaceElevationFromWaves, SurfaceElevationInterface, std::shared_ptr<SurfaceElevationFromWaves>>(m, "SurfaceElevationFromWaves")
         .def(py::init<
                 const std::vector<WaveModelPtr>& /*models*/,
                 const std::pair<std::size_t,std::size_t> /*output_mesh_size*/,

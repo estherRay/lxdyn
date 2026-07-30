@@ -197,7 +197,9 @@ void py_add_module_ssc_kinematics(py::module& m_ssc)
             }
         );
 
-    py::class_<ssc::kinematics::Kinematics>(m_ssc_kinematics, "Kinematics",
+    // shared_ptr holder, same reason as PointMatrix below: EnvironmentAndFrames::k is a
+    // KinematicsPtr and is read straight out of Python (`env.k`).
+    py::class_<ssc::kinematics::Kinematics, ssc::kinematics::KinematicsPtr>(m_ssc_kinematics, "Kinematics",
         "Lazily computes the optimal transform between two reference frames.")
         .def(py::init<>())
         .def("add",&ssc::kinematics::Kinematics::add, "Adds a transform between two reference frames")
@@ -211,7 +213,16 @@ void py_add_module_ssc_kinematics(py::module& m_ssc)
         .def("get_path",&ssc::kinematics::KinematicTree::get_path)
         ;
 
-    py::class_<ssc::kinematics::PointMatrix>(m_ssc_kinematics, "PointMatrix")
+    // Holder is PointMatrixPtr (shared_ptr), not pybind11's default unique_ptr: three
+    // default arguments below are `= PointMatrixPtr(new PointMatrix("NED", 0))`, and
+    // pybind11 casts a shared_ptr default into the class's *declared* holder. With the
+    // default holder it reinterpret_casts the shared_ptr as a unique_ptr and moves from
+    // it, so the object gets deleted twice — "Unable to load a custom holder type from a
+    // default-holder instance" at call time, then free(): invalid pointer at interpreter
+    // shutdown. Reproduced identically under g++/libstdc++ and zig/libc++, so this is a
+    // latent binding bug, not a toolchain artifact. SSC hands out PointMatrixPtr
+    // everywhere; shared_ptr is the holder this class always wanted.
+    py::class_<ssc::kinematics::PointMatrix, ssc::kinematics::PointMatrixPtr>(m_ssc_kinematics, "PointMatrix")
         .def(py::init<>())
         .def(py::init<const std::string& /*frame*/, const size_t /*nb_of_columns*/>())
         .def(py::init<const ssc::kinematics::Matrix3Xd& /*m*/,const std::string& /*frame*/>())

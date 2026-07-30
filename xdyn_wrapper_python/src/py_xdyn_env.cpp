@@ -191,7 +191,10 @@ void py_add_module_xdyn_env_wave(py::module& m_env)
             "Random phases, for each (frequency, direction) couple (but time invariant) in radian, for each angular frequency omega, and direction")
         ;
 
-    py::class_<WaveModel>(m_env, "WaveModel")
+    // shared_ptr holder (see the PointMatrix comment in py_ssc.cpp): WaveModelPtr is what
+    // crosses the boundary. Every class derived from it needs one too — pybind11 refuses to
+    // register a default-holder subclass of a custom-holder base.
+    py::class_<WaveModel, WaveModelPtr>(m_env, "WaveModel")
         // .def(py::init<const DiscreteDirectionalWaveSpectrum& /*spectrum*/, const double /*constant_random_phase*/>())
         // .def(py::init<const DiscreteDirectionalWaveSpectrum& /*spectrum*/, const int /*random_number_generator_seed*/>())
         .def("get_elevation", &WaveModel::get_elevation,
@@ -255,7 +258,7 @@ void py_add_module_xdyn_env_wave(py::module& m_env)
 
     py::class_<WaveModelPtr>(m_env, "WaveModelPtr");
 
-    py::class_<Airy, WaveModel>(m_env, "Airy")
+    py::class_<Airy, WaveModel, std::shared_ptr<Airy>>(m_env, "Airy")
         .def(py::init<const DiscreteDirectionalWaveSpectrum& /*spectrum*/>(),
             py::arg("spectrum"))
         .def(py::init<const DiscreteDirectionalWaveSpectrum& /*spectrum*/, const double /*constant_random_phase*/>(),
