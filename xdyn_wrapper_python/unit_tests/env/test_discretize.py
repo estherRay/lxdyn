@@ -206,7 +206,7 @@ class DiscretizeTest(unittest.TestCase):
         ndir = self.rng.random_size_t()()
         s = Stretching(delta=0, h=0)
         expected_regex = (
-            "Asked for a single frequency \(nfreq = 1\), but omega_min \(=.*\) != omega_max \(=.*\)"
+            r"Asked for a single frequency \(nfreq = 1\), but omega_min \(=.*\) != omega_max \(=.*\)"
         )
         with self.assertRaises(InvalidInputException) as pcm:
             discretize(S, D, omega_min, omega_max, nfreq, ndir, s, False)
@@ -223,7 +223,7 @@ class DiscretizeTest(unittest.TestCase):
         nfreq = self.rng.random_size_t().but_not(1)()
         ndir = self.rng.random_size_t()()
         s = Stretching(delta=0, h=0)
-        expected_regex = "omega_min = omega_max \(=.*\) but nfreq != 1"
+        expected_regex = r"omega_min = omega_max \(=.*\) but nfreq != 1"
         with self.assertRaises(InvalidInputException) as pcm:
             discretize(S, D, omega_min, omega_max, nfreq, ndir, s, False)
         self.assertTrue(re.search(expected_regex, str(pcm.exception)), str(pcm.exception))
@@ -235,19 +235,19 @@ class DiscretizeTest(unittest.TestCase):
         \brief This test checks that the flatten and filter functions work correctly
         on the following spectrum discretization
 
-        \code
+        \\code
         |  3  2  4
         ------------
         1 |  3  2  4
         5 | 15 10 20
         4 | 12  8 16
         3 |  9  6 12
-        \endcode
+        \\endcode
 
         The following Python code was used to generated threshold input for the
         filter function
 
-        \code{.py}
+        \\code{.py}
         import numpy as np
         S = np.array([3,2,4])
         D = np.array([1,5,4,3])
@@ -256,7 +256,7 @@ class DiscretizeTest(unittest.TestCase):
         pct = np.cumsum(np.flip(np.sort(np.hstack(M)),axis=0)) / M.sum()
         # Evaluate the sorted contribution of each component
         filter_ratio = np.floor(100*pct)
-        \endcode
+        \\endcode
         """
         d = DiscreteDirectionalWaveSpectrum()
         d.Si = [3, 2, 4]

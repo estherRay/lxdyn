@@ -173,7 +173,7 @@ class WageningenControlledForceModelTest(unittest.TestCase):
                     P_D=self.random_double_between(0.5, 1.4),
                     J=self.rng.random_double().no().greater_than(0)(),
                 )
-            expected_regex = "Warning: Wageningen model used outside of its domain. Maybe n is too small\? Invalid advance ratio J: expected 0 <= J <= 1.5 but got J=.*. Saturating at 0 to continue simulation."
+            expected_regex = r"Warning: Wageningen model used outside of its domain. Maybe n is too small\? Invalid advance ratio J: expected 0 <= J <= 1.5 but got J=.*. Saturating at 0 to continue simulation."
             self.assertTrue(re.search(expected_regex, buf.getvalue()), buf.getvalue())
 
             buf = io.StringIO()
@@ -184,7 +184,7 @@ class WageningenControlledForceModelTest(unittest.TestCase):
                     P_D=self.random_double_between(0.5, 1.4),
                     J=self.rng.random_double().no().greater_than(0)(),
                 )
-            expected_regex = "Warning: Wageningen model used outside of its domain. Maybe n is too small\? Invalid advance ratio J: expected 0 <= J <= 1.5 but got J=.*. Saturating at 0 to continue simulation."
+            expected_regex = r"Warning: Wageningen model used outside of its domain. Maybe n is too small\? Invalid advance ratio J: expected 0 <= J <= 1.5 but got J=.*. Saturating at 0 to continue simulation."
             self.assertTrue(re.search(expected_regex, buf.getvalue()), buf.getvalue())
 
             buf = io.StringIO()
@@ -195,7 +195,7 @@ class WageningenControlledForceModelTest(unittest.TestCase):
                     P_D=self.random_double_between(0.5, 1.4),
                     J=self.random_double_between(1.5, 15),
                 )
-            expected_regex = "Warning: Wageningen model used outside of its domain. Maybe n is too small\? Invalid advance ratio J: expected 0 <= J <= 1.5 but got J=.*. Saturating at 1.5 to continue simulation."
+            expected_regex = r"Warning: Wageningen model used outside of its domain. Maybe n is too small\? Invalid advance ratio J: expected 0 <= J <= 1.5 but got J=.*. Saturating at 1.5 to continue simulation."
             self.assertTrue(re.search(expected_regex, buf.getvalue()), buf.getvalue())
 
             buf = io.StringIO()
@@ -206,7 +206,7 @@ class WageningenControlledForceModelTest(unittest.TestCase):
                     P_D=self.random_double_between(0.5, 1.4),
                     J=self.rng.random_double().greater_than(1.5)(),
                 )
-            expected_regex = "Warning: Wageningen model used outside of its domain. Maybe n is too small\? Invalid advance ratio J: expected 0 <= J <= 1.5 but got J=.*. Saturating at 1.5 to continue simulation."
+            expected_regex = r"Warning: Wageningen model used outside of its domain. Maybe n is too small\? Invalid advance ratio J: expected 0 <= J <= 1.5 but got J=.*. Saturating at 1.5 to continue simulation."
             self.assertTrue(re.search(expected_regex, buf.getvalue()), buf.getvalue())
 
             buf = io.StringIO()
@@ -279,7 +279,7 @@ class WageningenControlledForceModelTest(unittest.TestCase):
                     P_D=self.random_double_between(0.5, 1.4),
                     J=self.rng.random_double().no().greater_than(0)(),
                 )
-            expected_regex = "Warning: Wageningen model used outside of its domain. Maybe n is too small\? Invalid advance ratio J: expected 0 <= J <= 1.5 but got J=.*. Saturating at 0 to continue simulation."
+            expected_regex = r"Warning: Wageningen model used outside of its domain. Maybe n is too small\? Invalid advance ratio J: expected 0 <= J <= 1.5 but got J=.*. Saturating at 0 to continue simulation."
             self.assertTrue(re.search(expected_regex, buf.getvalue()), buf.getvalue())
 
             buf = io.StringIO()
@@ -290,7 +290,7 @@ class WageningenControlledForceModelTest(unittest.TestCase):
                     P_D=self.random_double_between(0.5, 1.4),
                     J=self.random_double_between(1.5, 15),
                 )
-            expected_regex = "Warning: Wageningen model used outside of its domain. Maybe n is too small\? Invalid advance ratio J: expected 0 <= J <= 1.5 but got J=.*. Saturating at 1.5 to continue simulation."
+            expected_regex = r"Warning: Wageningen model used outside of its domain. Maybe n is too small\? Invalid advance ratio J: expected 0 <= J <= 1.5 but got J=.*. Saturating at 1.5 to continue simulation."
             self.assertTrue(re.search(expected_regex, buf.getvalue()), buf.getvalue())
 
             buf = io.StringIO()
@@ -301,7 +301,7 @@ class WageningenControlledForceModelTest(unittest.TestCase):
                     P_D=self.random_double_between(0.5, 1.4),
                     J=self.rng.random_double().greater_than(1.5)(),
                 )
-            expected_regex = "Warning: Wageningen model used outside of its domain. Maybe n is too small\? Invalid advance ratio J: expected 0 <= J <= 1.5 but got J=.*. Saturating at 1.5 to continue simulation."
+            expected_regex = r"Warning: Wageningen model used outside of its domain. Maybe n is too small\? Invalid advance ratio J: expected 0 <= J <= 1.5 but got J=.*. Saturating at 1.5 to continue simulation."
             self.assertTrue(re.search(expected_regex, buf.getvalue()), buf.getvalue())
 
             buf = io.StringIO()
@@ -312,7 +312,7 @@ class WageningenControlledForceModelTest(unittest.TestCase):
                     P_D=self.random_double_between(0.5, 1.4),
                     J=self.rng.random_double().greater_than(1.5)(),
                 )
-            expected_regex = "Warning: Wageningen model used outside of its domain. Maybe n is too small\? Invalid advance ratio J: expected 0 <= J <= 1.5 but got J=.*. Saturating at 1.5 to continue simulation."
+            expected_regex = r"Warning: Wageningen model used outside of its domain. Maybe n is too small\? Invalid advance ratio J: expected 0 <= J <= 1.5 but got J=.*. Saturating at 1.5 to continue simulation."
             self.assertTrue(re.search(expected_regex, buf.getvalue()), buf.getvalue())
 
             buf = io.StringIO()
@@ -465,7 +465,7 @@ class WageningenControlledForceModelTest(unittest.TestCase):
         buf = io.StringIO()
         with redirect_stderr(buf):
             wrench = model.get_force(states, self.random_double_between(), env, commands)
-        expected_regex = "Warning: Wageningen model used outside of its domain. Maybe n is too small\? Invalid advance ratio J: expected 0 <= J <= 1.5 but got J=inf. Saturating at 1.5 to continue simulation."
+        expected_regex = r"Warning: Wageningen model used outside of its domain. Maybe n is too small\? Invalid advance ratio J: expected 0 <= J <= 1.5 but got J=inf. Saturating at 1.5 to continue simulation."
         self.assertTrue(re.search(expected_regex, buf.getvalue()), buf.getvalue())
         self.assertAlmostEqual(0, wrench.X(), delta=EPS)
         self.assertAlmostEqual(0, wrench.Y(), delta=EPS)
@@ -485,7 +485,7 @@ class WageningenControlledForceModelTest(unittest.TestCase):
         buf = io.StringIO()
         with redirect_stderr(buf):
             wrench = model.get_force(states, self.random_double_between(), env, commands)
-        expected_regex = "Warning: Wageningen model used outside of its domain. Maybe n is too small\? Invalid advance ratio J: expected 0 <= J <= 1.5 but got J=.*. Saturating at 1.5 to continue simulation."
+        expected_regex = r"Warning: Wageningen model used outside of its domain. Maybe n is too small\? Invalid advance ratio J: expected 0 <= J <= 1.5 but got J=.*. Saturating at 1.5 to continue simulation."
         self.assertTrue(re.search(expected_regex, buf.getvalue()), buf.getvalue())
 
         self.assertAlmostEqual(0, wrench.X(), delta=EPS)
