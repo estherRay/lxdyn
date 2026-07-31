@@ -54,6 +54,16 @@ run = "tools/deps/build-all.sh aarch64"
 description = "Build the x86_64-windows-gnu closure into libcxx-win/ (needs deps:native)"
 run = "tools/deps/build-all.sh win"
 
+[tasks."deps:fetch"]
+description = "Download a prebuilt closure instead of building it: mise run deps:fetch native"
+# The bootstrap answer for a fresh clone and for CI: ~30 MB per flavor against hours of
+# build. Hash-verified against tools/deps/assets.sha256, which also names the release tag.
+run = "sh tools/deps/fetch.sh"
+
+[tasks."deps:pack"]
+description = "Pack a built closure into a release asset: mise run deps:pack native"
+run = "sh tools/deps/pack.sh"
+
 # -fqemu/-fwine rather than the host's binfmt_misc: where a foreign binary is registered, zig runs
 # it transparently and this lane passes without either emulator being declared anywhere. That is a
 # property of the developer's machine, not of the repository.

@@ -46,6 +46,11 @@
                                                           # falls through to whatever gdb the host has,
                                                           # or to none. .gdbinit needs one built with
                                                           # Python for $_regex.
+            pkgs.llvm                                     # llvm-strip, for tools/deps/pack.sh and the
+                                                          # wheel. binutils' strip is built for one
+                                                          # architecture: on the aarch64 and Windows
+                                                          # archives it fails per member and still
+                                                          # exits 0. llvm-strip is target-agnostic.
           ];
           buildInputs = cxxLibs;
 

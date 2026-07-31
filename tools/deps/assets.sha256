@@ -1,0 +1,19 @@
+# Prebuilt dependency closures published as GitHub release assets, and the tag they live
+# under. fetch.sh reads both from this file, so the tag and the hashes cannot drift apart.
+#
+# The asset is not content-addressed by its name: a moved tag or a re-uploaded file is the
+# same URL. These hashes are what identify it, and fetch.sh will not unpack without them.
+#
+# To publish a new set:
+#   1. tools/deps/pack.sh {native,aarch64,win}   -- prints the lines below
+#   2. bump the tag, paste the three lines
+#   3. gh release create <tag> build/deps-assets/lxdyn-deps-*.tar.zst
+#
+# Bump the tag whenever the recipes, the yaml-cpp pin, the zig version or the glibc floor
+# change. Never re-upload under an existing tag: anyone who already fetched it keeps a
+# closure these hashes no longer describe.
+#
+# tag: closures-v0
+ee1196d4cf1827ef371f98419cfc6f4ee0853310f3a0a696466f668bb81ec2ef  lxdyn-deps-native.tar.zst
+a8164b788b7eeb41d9d641a58bd45a0e22fb4a80f4a0ff14e3cdbfd133354d67  lxdyn-deps-aarch64.tar.zst
+d64b83f0f8b3f1402f3887a0c6469406daa217342183ca6596e164f03337e27d  lxdyn-deps-win.tar.zst
