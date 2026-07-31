@@ -11,6 +11,16 @@ dependencies = []
 package = false
 
 [dependency-groups]
+test-cli = ["h5py", "numpy"]
+test-grpc = [
+    "grpcio",
+    "grpcio-tools",
+    "protobuf",
+    "pyyaml",
+    "numpy",
+    "pytest",
+    "websocket-client==0.56.0",
+]
 # pybind11 2.10.0 is a wheel-ABI decision, not a reproducibility pin: it is what the published
 # wheel is built with. numpy<2 is Hazard P — pybind11 2.10 SIGSEGVs on the first ndarray
 # argument against numpy 2, with no diagnostic. See docs/hazards.md.

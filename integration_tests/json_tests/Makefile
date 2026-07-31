@@ -1,5 +1,9 @@
-.PHONY: all clean
-all:
-	@make -C cosim
+.PHONY: all clean cosim
+
+all: cosim
+
+cosim:
+	@sh cosim/run.sh
+
 clean:
-	@make -C cosim $@
+	@rm -rf ../../build/integration-tests/json_cosim

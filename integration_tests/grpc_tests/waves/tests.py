@@ -1,9 +1,14 @@
 """Integration tests for gRPC wave models."""
+import os
+
 from xdyngrpc.cosimulation import CosimulationEuler
+
+# Was hardcoded to the compose service name "xdyn:9002".
+XDYN_SERVER_URL = os.environ.get("xdyn_server_url", "localhost:9002")
 
 
 def test_should_get_the_right_number_of_results_from_xdyn_in_cosim_mode():
-    cosim = CosimulationEuler("xdyn:9002")
+    cosim = CosimulationEuler(XDYN_SERVER_URL)
     dt = 1
     state = {
         "t": 0,

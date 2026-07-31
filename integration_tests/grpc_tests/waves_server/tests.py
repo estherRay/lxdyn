@@ -1,8 +1,12 @@
+import os
 import unittest
 import grpc
 import numpy as np
 
 from xdyngrpc.waves.client import LOGGER, Waves
+
+# Was hardcoded to the compose service name "waves-server:50051".
+WAVES_SERVER_URL = os.environ.get("waves_server_url", "localhost:50051")
 
 DATA_NO_ENV = """
 rotations convention: [psi, theta', phi'']
@@ -111,7 +115,7 @@ class AiryWaveGrpcServerTest(unittest.TestCase):
 
     def test_00_invalid_parameters(self):
         """Check that an invalid string can not build a gRPC Waves client"""
-        with grpc.insecure_channel("waves-server:50051") as channel:
+        with grpc.insecure_channel(WAVES_SERVER_URL) as channel:
             LOGGER.info("Creating Waves instance")
             with self.assertRaises(Exception) as pcm:
                 Waves(channel, "random string")
@@ -120,7 +124,7 @@ class AiryWaveGrpcServerTest(unittest.TestCase):
 
     def test_00_incomplete_yaml_parameters(self):
         """Check that an input without a wave model can not build a gRPC Waves client"""
-        with grpc.insecure_channel("waves-server:50051") as channel:
+        with grpc.insecure_channel(WAVES_SERVER_URL) as channel:
             LOGGER.info("Creating Waves instance")
             with self.assertRaises(Exception) as pcm:
                 Waves(channel, DATA_NO_ENV)
@@ -129,7 +133,7 @@ class AiryWaveGrpcServerTest(unittest.TestCase):
 
     def test_00_invalid_requests(self):
         """Check that exceptions are raised with invalid requests"""
-        with grpc.insecure_channel("waves-server:50051") as channel:
+        with grpc.insecure_channel(WAVES_SERVER_URL) as channel:
             LOGGER.info("Creating Waves instance")
             waves = Waves(channel, DATA_NO_WAVE)
             with self.assertRaises(KeyError):
@@ -143,7 +147,7 @@ class AiryWaveGrpcServerTest(unittest.TestCase):
 
     def test_01_no_wave(self):
         """Test that all responses are 0 when no wave is defined"""
-        with grpc.insecure_channel("waves-server:50051") as channel:
+        with grpc.insecure_channel(WAVES_SERVER_URL) as channel:
             LOGGER.info("Creating Waves instance")
             waves = Waves(channel, DATA_NO_WAVE)
             elevations_request = {"t": 5, "points": [(1, 2), (3, 5)]}
@@ -171,7 +175,7 @@ class AiryWaveGrpcServerTest(unittest.TestCase):
         Monochromatic wave phase is not known, so assertions made on elevation,
         orbital velocities and dynamic pressure are different from zero.
         """
-        with grpc.insecure_channel("waves-server:50051") as channel:
+        with grpc.insecure_channel(WAVES_SERVER_URL) as channel:
             LOGGER.info("Creating Waves instance")
             waves = Waves(channel, DATA_WAVE_MONOCHROMATIC)
             elevations_request = {"t": 5, "points": [(1, 2), (3, 5)]}
@@ -208,7 +212,7 @@ class AiryWaveGrpcServerTest(unittest.TestCase):
         """Test server works with two spectra, that every response has the
         right size.
         """
-        with grpc.insecure_channel("waves-server:50051") as channel:
+        with grpc.insecure_channel(WAVES_SERVER_URL) as channel:
             parameters = DATA_WAVE_TWO_SPECTRA
             LOGGER.info("Creating Waves instance")
             waves = Waves(channel, parameters)

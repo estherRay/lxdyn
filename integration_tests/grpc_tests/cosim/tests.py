@@ -11,7 +11,7 @@ EPS = 1E-6
 class Tests(unittest.TestCase):
     """All unit tests."""
 
-    cosim = CosimulationEuler(os.environ['xdyn_server_url'])
+    cosim = CosimulationEuler(os.environ.get('xdyn_server_url', 'localhost:9002'))
     res = {}
 
     def setUp(self):

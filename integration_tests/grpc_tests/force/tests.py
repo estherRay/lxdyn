@@ -1,6 +1,7 @@
 """Integration tests for gRPC wave models."""
 
 import logging
+import os
 
 from websocket import create_connection
 
@@ -15,12 +16,15 @@ logging.basicConfig(
 LOGGER = logging.getLogger(__name__)
 LOGGER.setLevel(logging.INFO)
 
+# Was hardcoded to the compose service name "ws://xdyn:9002".
+XDYN_SERVER_URL = os.environ.get("xdyn_server_url", "ws://localhost:9002")
+
 
 def run(state):
     """Run a cosimulation step."""
     import json
 
-    ws = create_connection("ws://xdyn:9002")
+    ws = create_connection(XDYN_SERVER_URL)
     ws.send(json.dumps(state))
     result = ws.recv()
     ws.close()

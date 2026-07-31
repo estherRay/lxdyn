@@ -22,7 +22,7 @@ class Cosim:
     """Launch cosimulation steps. Wrapper arround json+ws."""
 
     def __init__(self):
-        self.xdyn_server_url = os.environ['xdyn_server_url']
+        self.xdyn_server_url = os.environ.get('xdyn_server_url', 'ws://localhost:9002')
 
     def step(self, state, Dt, requested_output):
         """Run a cosimulation step."""

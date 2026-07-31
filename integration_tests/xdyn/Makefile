@@ -1,4 +1,4 @@
-.PHONY: all clean \
+.PHONY: all clean demos \
 	invalid_yaml_returns_non_zero_error_code \
 	tutorial_12 \
 	extra_hdf5_output_when_required \
@@ -17,25 +17,68 @@ all: invalid_yaml_returns_non_zero_error_code \
 	 issue_235\
 	 test_output_size
 
+# These used to run every step through `docker run … xdyn`, with the demo/tutorial inputs
+# copied out of /usr/demos inside the image, and h5dump/python supplied by two more images.
+# The zig lane builds static binaries with no runtime dependencies, so they run directly —
+# and the same binaries that ship in the image also *generate* the demo inputs, so no image
+# is needed at any step.
+#
+# Everything runs in $(WORK), outside the source tree: these tests write ~40 files and
+# corrupt one of them on purpose. `clean` is then a single rm -rf, and there is no way to
+# delete a tracked fixture by accident.
+#
+# Overridable, so the docker lane can still drive them as a cross-check:
+#   make XDYN='docker run --rm -v $(PWD):/work -w /work xdyn'
+# Derived from uname, not hardcoded: build.zig installs per target triple, so a fixed
+# x86_64-linux-gnu points at nothing on aarch64 or macOS. See ../../tools/build-dir.sh.
+BIN            ?= $(shell sh $(CURDIR)/../../tools/build-dir.sh)/bin
+WORK           ?= $(abspath $(CURDIR)/../../build/integration-tests)
+XDYN           ?= $(BIN)/xdyn
+XDYN_FOR_CS    ?= $(BIN)/xdyn-for-cs
+XDYN_FOR_ME    ?= $(BIN)/xdyn-for-me
+GZ             ?= $(BIN)/gz
+GENERATE_YAML  ?= $(BIN)/generate_yaml_example
+GENERATE_STL   ?= $(BIN)/generate_stl_examples
+H5DUMP         ?= h5dump
+# check_output_size.py needs h5py + numpy, so the default is the venv uv builds from
+# pyproject.toml's test-cli group -- not a bare `python3`, which under `nix develop` is now
+# no interpreter at all and everywhere else is one with no h5py. `mise run integration`
+# passes the same path explicitly; running make directly gets it too, or a clear ENOENT
+# saying which venv is missing.
+PYTHON         ?= $(abspath $(CURDIR)/../../build/venv)/bin/python
 
-DOCKER_RUN=docker run -t --rm -u $(shell id -u):$(shell id -g) -v $(shell pwd):/work -w /work
-DOCKER_RUN_XDYN_BASH=${DOCKER_RUN} -v $(shell pwd):/xdyn_demos --entrypoint /bin/bash xdyn -c
-WRONG_ERROR_CODE=echo "Oops, didn't get the error code we were expecting: test failed!" && return 1
+WRONG_ERROR_CODE=echo "Oops, didn't get the error code we were expecting: test failed!" && exit 1
 EXPECTED_ERROR_CODE=echo "Got the error code we expected for an invalid YAML: success!"
 
-issue_196:
+# Tracked inputs the tests need; everything else in $(WORK) is generated.
+FIXTURES = issue_196_test.yml issue_196_test.raodb.ini \
+           issue_202.yml issue_202.py \
+           issue_39.yml issue_39.csv issue_39.py \
+           issue_235.yml cube_b.stl check_output_size.py
+
+# Phony on purpose: invalid_yaml_returns_non_zero_error_code corrupts tutorial_01 with sed,
+# so every run wants a fresh copy. Both generators together take well under a second.
+demos:
+	@mkdir -p $(WORK)
+	@cp $(addprefix $(CURDIR)/,$(FIXTURES)) $(WORK)/
+	@echo "Generating demo inputs into $(WORK)..."
+	@cd $(WORK) && $(GENERATE_YAML) . && $(GENERATE_STL) .
+
+issue_196: demos
 	@echo "Attempting to use a Windows-generated PRECAL-R file with a Linux xdyn..."
-	@${DOCKER_RUN} xdyn issue_196_test.yml --dt 1 --tend 1
+	@cd $(WORK) && $(XDYN) issue_196_test.yml --dt 1 --tend 1
 	@echo "Test passed!"
 
-invalid_yaml_returns_non_zero_error_code: tutorial_01_falling_ball.yml cube.stl
-	@echo "Corrupting $<..."
-	@sed -i 's/rotations/rrrotations/g' tutorial_01_falling_ball.yml
+invalid_yaml_returns_non_zero_error_code: demos
+	@echo "Corrupting tutorial_01_falling_ball.yml..."
+	@# Not `sed -i`: GNU takes no argument, BSD/macOS takes the backup suffix.
+	@cd $(WORK) && sed 's/rotations/rrrotations/g' tutorial_01_falling_ball.yml > corrupt.yml \
+	    && mv corrupt.yml tutorial_01_falling_ball.yml
 	@echo "Testing if this invalid YAML triggers a non-zero return code of xdyn..."
-	@${DOCKER_RUN} xdyn --dt 1 --tend 1 tutorial_01_falling_ball.yml && ${WRONG_ERROR_CODE} || ${EXPECTED_ERROR_CODE}
-	@${DOCKER_RUN} --entrypoint=xdyn-for-cs xdyn --dt 1 -p 9002 tutorial_01_falling_ball.yml && ${WRONG_ERROR_CODE} || ${EXPECTED_ERROR_CODE}
-	@${DOCKER_RUN} --entrypoint=xdyn-for-me xdyn -p 9002 tutorial_01_falling_ball.yml && ${WRONG_ERROR_CODE} || ${EXPECTED_ERROR_CODE}
-	@${DOCKER_RUN} --entrypoint=gz xdyn --dphi=1 --phi_max=1 -s cube.stl tutorial_01_falling_ball.yml && ${WRONG_ERROR_CODE} || ${EXPECTED_ERROR_CODE}
+	@cd $(WORK) && { $(XDYN) --dt 1 --tend 1 tutorial_01_falling_ball.yml && ${WRONG_ERROR_CODE} || ${EXPECTED_ERROR_CODE}; }
+	@cd $(WORK) && { $(XDYN_FOR_CS) --dt 1 -p 9002 tutorial_01_falling_ball.yml && ${WRONG_ERROR_CODE} || ${EXPECTED_ERROR_CODE}; }
+	@cd $(WORK) && { $(XDYN_FOR_ME) -p 9002 tutorial_01_falling_ball.yml && ${WRONG_ERROR_CODE} || ${EXPECTED_ERROR_CODE}; }
+	@cd $(WORK) && { $(GZ) --dphi=1 --phi_max=1 -s cube.stl tutorial_01_falling_ball.yml && ${WRONG_ERROR_CODE} || ${EXPECTED_ERROR_CODE}; }
 
 include Makefile.check_exports
 include Makefile.binary_stl
@@ -43,46 +86,10 @@ include Makefile.issue_202
 include Makefile.issue_39
 include Makefile.issue_235
 
-tutorial_01_falling_ball.yml:
-	@echo "Copying tutorial files from xdyn's Docker container..."
-	@${DOCKER_RUN_XDYN_BASH} "cp /usr/demos/$@ /xdyn_demos/"
-
-tutorial_12:
-	@echo "Copying tutorial files from xdyn's Docker container..."
-	@${DOCKER_RUN_XDYN_BASH} "cp /usr/demos/tutorial_12_precal_r.yml \
-								 /usr/demos/ONRT_SIMMAN.raodb.ini \
-								 /usr/demos/test_ship.stl \
-								 /xdyn_demos/"
+tutorial_12: demos
 	@echo "Launching tutorial 12..."
-	@${DOCKER_RUN} xdyn --dt 1 --tend 1 -o tsv tutorial_12_precal_r.yml
-	@echo "All good, cleaning up!"
-	@rm -rf ONRT_SIMMAN.raodb.ini tutorial_12_precal_r.yml test_ship.stl
-
-
-cube.stl:
-	@echo "Copying tutorial files from xdyn's Docker container..."
-	@${DOCKER_RUN_XDYN_BASH} "cp /usr/demos/$@ /xdyn_demos/"
-
-test_ship.stl:
-	@echo "Copying $@ from xdyn's Docker container..."
-	@${DOCKER_RUN_XDYN_BASH} "cp /usr/demos/$@ /xdyn_demos/"
+	@cd $(WORK) && $(XDYN) --dt 1 --tend 1 -o tsv tutorial_12_precal_r.yml
+	@echo "All good!"
 
 clean:
-	@rm -rf tutorial_01_falling_ball.yml\
-		   cube.stl\
-		   .commands.result\
-		   ONRT_SIMMAN.raodb.ini\
-		   tutorial_12_precal_r.yml\
-		   test_ship.stl\
-		   test_ship_in_waves.yml\
-		   test_ship_in_waves.yml.new\
-		   falling_ball.csv\
-		   falling_ball.h5\
-		   falling_ball.json\
-		   tutorial_05_froude_krylov.yml\
-		   stable_cube_test.yml\
-		   issue_202.csv\
-		   issue_39.out.without_shift.csv\
-		   issue_39.out.with_shift.csv\
-		   issue_39_without_shift.yml\
-		   res.csv res.hdf5 res.json res.tsv
+	@rm -rf $(WORK)

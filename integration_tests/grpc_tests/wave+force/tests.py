@@ -2,6 +2,7 @@
 
 import logging
 import math
+import os
 
 from xdyngrpc.cosimulation import CosimulationEuler
 
@@ -16,9 +17,12 @@ logging.basicConfig(
 LOGGER = logging.getLogger(__name__)
 LOGGER.setLevel(logging.INFO)
 
+# Was hardcoded to the compose service name "xdyn:9002".
+XDYN_SERVER_URL = os.environ.get("xdyn_server_url", "localhost:9002")
+
 
 def test_should_get_phases():
-    cosim = CosimulationEuler("xdyn:9002")
+    cosim = CosimulationEuler(XDYN_SERVER_URL)
 
     dt = 2
     state = {

@@ -68,6 +68,56 @@ zig build test -Dtarget=x86_64-windows-gnu -fwine
 description = "gdb a debug-built exe: mise run gdb -- run_all_tests --gtest_filter=Foo*"
 run = "sh tools/gdb.sh"
 
+[tasks."zig:build"]
+description = "Build xdyn and the test runner -> build/<target>/bin"
+# `zig build test` compiles and runs the suite but installs nothing, so it does NOT leave
+# executables behind. Both integration lanes run the real binaries and depend on this.
+run = "zig build"
+
+[tasks.integration]
+description = "Run the 10 CLI integration tests against the zig build (no docker)"
+depends = ["zig:build"]
+# `uv sync`, not `uv pip install`: interpreter and packages both come from pyproject.toml +
+# the committed uv.lock, so this venv is reproducible rather than "whatever PyPI had today".
+# Under build/, beside the wrapper's. See pyproject.toml for what each group holds.
+run = """
+UV_PROJECT_ENVIRONMENT=build/venv uv sync --only-group test-cli --quiet
+make -C integration_tests/xdyn PYTHON="$PWD/build/venv/bin/python" all
+"""
+
+[tasks."integration:setup"]
+description = "Python env + protobuf stubs for the gRPC/JSON tests"
+# --python 3.10 is Hazard N and nothing else: xdyngrpc does not import on 3.11+. It is spelled
+# out here rather than in requires-python because only this group is affected — narrowing the
+# project would also cap the wrapper's 3.10/3.13/3.15 matrix. See pyproject.toml.
+#
+# xdyngrpc/_proto is generated, not checked in. The submodule's own Makefile generates it by
+# building two docker images; grpc_tools is an ordinary pip package, so we don't.
+run = '''
+UV_PROJECT_ENVIRONMENT=build/venv-grpc uv sync --only-group test-grpc --python 3.10 --quiet
+mkdir -p interfaces/xdyngrpc/_proto
+touch interfaces/xdyngrpc/_proto/__init__.py
+build/venv-grpc/bin/python -m grpc_tools.protoc \
+    -I interfaces/proto \
+    --python_out=interfaces/xdyngrpc/_proto \
+    --grpc_python_out=interfaces/xdyngrpc/_proto \
+    interfaces/proto/*.proto
+# Generated stubs import each other as top-level modules; make them package-relative.
+# Portability: no `sed -i` (BSD reads the next arg as a backup suffix) and `&` rather than
+# the GNU-only `\0` for "the whole match".
+for f in interfaces/xdyngrpc/_proto/*.py; do
+    sed -E 's/^import.*_pb2/from . &/' "$f" > "$f.rel" && mv "$f.rel" "$f"
+done
+'''
+
+[tasks."integration:grpc"]
+description = "Run the 8 gRPC + 1 JSON protocol integration tests (no docker)"
+depends = ["zig:build", "integration:setup"]
+run = """
+make -C integration_tests/grpc_tests
+make -C integration_tests/json_tests
+"""
+
 [tasks."python:setup"]
 description = "Python env for the pybind11 wrapper (pinned pybind11 + numpy)"
 run = 'UV_PROJECT_ENVIRONMENT=build/venv-wrapper uv sync --only-group wrapper --quiet'

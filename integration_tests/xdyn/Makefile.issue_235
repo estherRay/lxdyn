@@ -1,10 +1,9 @@
-issue_235:
+issue_235: demos
 	@echo "Make sure duplicate controller names are detected..."
-	@cat issue_235.yml | sed "s/Fin_Stabilizer_PS_co/Fin_Stabilizer_SB_co/g" > issue_235.dup.yml
-	@${DOCKER_RUN} xdyn --dt 1 --tend 1 issue_235.dup.yml && ${WRONG_ERROR_CODE} || ${EXPECTED_ERROR_CODE}
-	@rm issue_235.dup.yml
+	@cd $(WORK) && sed "s/Fin_Stabilizer_PS_co/Fin_Stabilizer_SB_co/g" issue_235.yml > issue_235.dup.yml
+	@cd $(WORK) && { $(XDYN) --dt 1 --tend 1 issue_235.dup.yml && ${WRONG_ERROR_CODE} || ${EXPECTED_ERROR_CODE}; }
+	@cd $(WORK) && rm issue_235.dup.yml
 	@echo "Done!"
 	@echo "Check we can generate an HDF5 file containing controller outputs..."
-	@${DOCKER_RUN} xdyn:latest issue_235.yml -s euler --dt 1 --tend 1 -o test.h5
+	@cd $(WORK) && $(XDYN) issue_235.yml -s euler --dt 1 --tend 1 -o test.h5
 	@echo "Done!"
-
