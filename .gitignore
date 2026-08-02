@@ -29,7 +29,7 @@ ssc_windows
 /libcxx-*
 
 # Test droppings: run_all_tests and the tutorials write these into their cwd,
-# which is the repo root. The Makefile writes .dockerignore there too.
+# which is the repo root.
 #
 # ROOT-ANCHORED ON PURPOSE. Bare **.png / **.pptx / **.h5 also match the tracked
 # reference datasets under validation/ and integration_tests/ and the documentation
@@ -47,7 +47,6 @@ ssc_windows
 /*.png
 /*.pptx
 /*.log
-/.dockerignore
 
 # Generated documentation. Still blanket-matched: the pandoc/pweave lane writes next
 # to its sources rather than into an output directory, so there is nothing to anchor to.
