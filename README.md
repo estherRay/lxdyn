@@ -62,41 +62,68 @@ how to deploy the project on a live system.
 ### Prerequisites
 
 Building xdyn needs [Nix](https://nixos.org/download/) with flakes enabled. The
-`flake.nix` at the repository root pins the compiler and every dependency, so
-nothing else has to be installed.
+`flake.nix` at the repository root pins zig and every tool, so nothing else has
+to be installed.
+
+The C++ dependencies — Boost, gRPC, HDF5, yaml-cpp, GoogleTest — are
+deliberately *not* system packages: they are built against zig's libc++ into a
+closure of their own, so the build does not depend on what the host distribution
+ships. `tools/deps/` builds one from source in a few hours, or you can download
+a prebuilt one in about 35 MB.
+
+```bash
+nix develop
+mise run deps:fetch native     # or `mise run deps:native` to build it yourself
+mise run setup                 # submodules and the SSC umbrella headers
+```
 
 ### Installing
 
 ```bash
-nix develop
-mise run configure
-mise run build
+zig build
 ```
 
-The binaries can then be found in `build_native`.
+The binaries can then be found in `build/<target>/bin` — `build/x86_64-linux-gnu/bin`
+on a typical Linux host. Codegen runs as part of the build; there is no configure step.
 
-`mise run configure` writes the CMake cache; you only need it again after
-changing the build configuration. `mise run build` on its own is enough
-afterwards.
+Cross-compiling needs nothing but the matching closure:
+
+```bash
+mise run deps:fetch aarch64
+zig build -Dtarget=aarch64-linux-musl
+```
 
 ## Running the tests
 
 ```bash
-mise run test
+zig build test                 # 916 unit tests
+mise run integration           # 10 command-line scenarios
+mise run integration:grpc      # 8 gRPC + 1 JSON protocol scenarios
+mise run python:test           # 285 tests for the Python bindings
 ```
 
-The tests are written using Google test. These are both end-to-end tests and
-unit tests. The end-to-end tests can be a bit long so you can disable them
-using Google tests filters — all arguments after the executable are passed
-straight through:
+The unit tests are written using Google test. These are both end-to-end tests
+and unit tests. The end-to-end tests can be a bit long, so you can disable them
+with a Google Test filter by running the binary directly:
 
 ```bash
-cd build_native && ./run_all_tests --gtest_filter=-'*LONG*'
+$(sh tools/build-dir.sh)/bin/run_all_tests --gtest_filter=-'*LONG*'
 ```
 
-All arguments after the script name are passed to the GTest executable. Please
-refer to [the Google Test documentation for details and other available
+Please refer to [the Google Test documentation for details and other available
 options](https://github.com/google/googletest/blob/master/googletest/docs/advanced.md#running-a-subset-of-the-tests).
+
+### The CMake build
+
+CMake is kept as a second opinion — it compiles the same sources with g++ and
+libstdc++, which is worth having when a failure looks like it might be a zig or
+libc++ problem. It is **not** the supported build, and CI does not run it: it
+resolves Boost, gRPC and HDF5 from the environment, which is the dependency the
+zig lane exists to remove.
+
+```bash
+mise run configure && mise run build && mise run test
+```
 
 ## Running xdyn
 
@@ -167,11 +194,12 @@ docker run -it --rm -w /usr/demos sirehna/xdyn tutorial_01_falling_ball.yml --dt
 
 ## Debugging
 
-Build a debug version first:
+Build a debug version first. This is `-O0 -g` for xdyn's own code only; the
+dependency closure stays optimized, which is what you want — stepping into
+Boost is rarely the point.
 
 ```bash
-BUILD_TYPE=Debug mise run configure
-mise run build
+zig build -Ddebug
 ```
 
 ### Valgrind
@@ -180,23 +208,25 @@ The memory analyzer [Valgrind](https://valgrind.org/) can be used during
 development to check for memory leaks and use of uninitialized values:
 
 ```bash
-cd build_native && valgrind ./run_all_tests
+valgrind $(sh tools/build-dir.sh)-debug/bin/run_all_tests
 ```
 
 Any [flag `run_all_tests` accepts](https://google.github.io/googletest/advanced.html#running-test-programs-advanced-options)
 can be passed through, in particular filtering:
 
 ```bash
-cd build_native && valgrind ./run_all_tests --gtest_filter='Gravity*'
+valgrind $(sh tools/build-dir.sh)-debug/bin/run_all_tests --gtest_filter='Gravity*'
 ```
 
 ### GDB
 
-The binaries are native, so the host debugger works on them directly:
+`mise run gdb` starts GDB on one of the debug binaries built above, with the
+repository's `.gdbinit` loaded — GDB otherwise declines to auto-load it, and
+the helpers it defines would silently not be there:
 
 ```bash
-cd build_native && gdb ./xdyn/executables/xdyn
-cd build_native && gdb ./run_all_tests
+mise run gdb -- xdyn tutorial_01_falling_ball.yml
+mise run gdb -- run_all_tests --gtest_filter='Gravity*'
 ```
 
 This will open a GDB prompt. To close it, press Ctrl+D. For more details on how
