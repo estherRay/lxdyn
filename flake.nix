@@ -46,6 +46,9 @@
                                                           # falls through to whatever gdb the host has,
                                                           # or to none. .gdbinit needs one built with
                                                           # Python for $_regex.
+            pkgs.doxygen                                  # mise run doc:cpp. Was found by
+                                                          # find_package(Doxygen) and silently
+                                                          # skipped when absent.
             pkgs.llvm                                     # llvm-strip, for tools/deps/pack.sh and the
                                                           # wheel. binutils' strip is built for one
                                                           # architecture: on the aarch64 and Windows

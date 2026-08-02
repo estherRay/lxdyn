@@ -261,6 +261,27 @@ PYTHONPATH="$SO_DIR" "$PY" -m sphinx -b html src/source html
 echo "OK -> $OUT/html/index.html"
 '''
 
+[tasks."doc:cpp"]
+description = "Build the C++ API reference with Doxygen -> build/doxygen/html/"
+# Doxyfile.in stays the single source, substituted here exactly as cmake/CMakeDocumentation
+# .cmake does it -- two @VARS@ and nothing else -- rather than forked into a second Doxyfile
+# that would drift. When C22 deletes CMake, the template can collapse into a plain Doxyfile.
+#
+# OUTPUT_DIRECTORY is appended rather than substituted: the template hardcodes docs/doxygen,
+# inside the source tree, and a later assignment wins in a Doxyfile. Same rule as the Sphinx
+# build -- generated documentation lives under build/.
+run = '''
+set -e
+OUT=$PWD/build/doxygen
+mkdir -p "$OUT"
+sed -e "s|@CMAKE_SOURCE_DIR@|$PWD|g" -e "s|@CMAKE_CURRENT_BINARY_DIR@|$OUT|g" \
+    docs/Doxyfile.in > "$OUT/Doxyfile"
+cp docs/DoxygenLayout.in "$OUT/DoxygenLayout.xml"
+printf '\nOUTPUT_DIRECTORY = %s\n' "$OUT" >> "$OUT/Doxyfile"
+cd "$OUT" && doxygen Doxyfile
+echo "OK -> $OUT/html/index.html"
+'''
+
 [tasks."python:lint"]
 description = "Check the wrapper's Python with ruff"
 # `ruff check` only: ruff's formatter is not byte-compatible with the black the retired image
