@@ -1,5 +1,8 @@
-# Build trees. Every lane picks its own suffix; none of them is in-source.
+# Build trees. build.zig writes everything under build/<target>; the suffixed names below
+# belonged to the CMake and docker lanes and are kept only so a tree left behind by a
+# pre-C22 checkout does not show up in `git status`.
 build
+install
 build*32
 build*64
 build_deb*
@@ -7,7 +10,6 @@ build_ubuntu*
 build_win*
 build_doc
 build_native
-install
 install_native
 install*32
 install*64

@@ -1,41 +1,9 @@
-[env]
-BUILD_TYPE = "Release"
-
-# `git submodule sync` is deliberately absent: .gitmodules uses relative URLs, which git
-# resolves against the current branch's remote, so syncing from a fork rewrites them wrongly.
-
 [tasks.setup]
-description = "Submodules, SSC umbrella headers, and CMake configure"
+description = "Submodules and the SSC umbrella headers"
 run = """
 git submodule update --init --recursive
 cd external/ssc/ssc && sh generate_module_header.sh
 """
-
-[tasks.configure]
-description = "Configure the native CMake build"
-# Deliberately does not depend on setup: setup resets every submodule to its recorded pin,
-# which silently discards a local checkout you are in the middle of testing.
-run = """
-cmake -Wno-dev -G Ninja -S . -B build_native \
-  -D CMAKE_POLICY_VERSION_MINIMUM=3.5 \
-  -D CMAKE_BUILD_TYPE=${BUILD_TYPE} \
-  -D CMAKE_INSTALL_PREFIX:PATH=../install_native \
-  -D XDYN_NATIVE_BUILD=ON \
-  -D BUILD_PYTHON_WRAPPER:BOOL=False \
-  -D BUILD_DOCUMENTATION:BOOL=False
-"""
-
-[tasks.build]
-description = "Build xdyn and the test runner"
-run = "ninja -C build_native xdyn run_all_tests"
-
-[tasks.test]
-description = "Run the unit test suite"
-run = "cd build_native && ./run_all_tests"
-
-[tasks.install]
-description = "Install into install_native/"
-run = "ninja -C build_native install"
 
 # build.zig locates a closure through -Ddeps/$XDYN_DEPS, defaulting to libcxx-<flavor>/; the same
 # variable overrides where these tasks write one. The cross flavors need the native closure first
@@ -365,23 +333,15 @@ echo "OK -> $OUT/html/index.html"
 
 [tasks."doc:cpp"]
 description = "Build the C++ API reference with Doxygen -> build/doxygen/html/"
-# Doxyfile.in stays the single source, substituted here exactly as cmake/CMakeDocumentation
-# .cmake does it -- two @VARS@ and nothing else -- rather than forked into a second Doxyfile
-# that would drift. When C22 deletes CMake, the template can collapse into a plain Doxyfile.
-#
-# OUTPUT_DIRECTORY is appended rather than substituted: the template hardcodes docs/doxygen,
-# inside the source tree, and a later assignment wins in a Doxyfile. Same rule as the Sphinx
-# build -- generated documentation lives under build/.
+# docs/Doxyfile is a plain Doxyfile now, not a @VAR@ template substituted by CMake. Every
+# path in it is relative, and doxygen resolves those against the *working directory* rather
+# than against the Doxyfile's own location -- which is why this runs from the repository
+# root and does not cd anywhere.
 run = '''
 set -e
-OUT=$PWD/build/doxygen
-mkdir -p "$OUT"
-sed -e "s|@CMAKE_SOURCE_DIR@|$PWD|g" -e "s|@CMAKE_CURRENT_BINARY_DIR@|$OUT|g" \
-    docs/Doxyfile.in > "$OUT/Doxyfile"
-cp docs/DoxygenLayout.in "$OUT/DoxygenLayout.xml"
-printf '\nOUTPUT_DIRECTORY = %s\n' "$OUT" >> "$OUT/Doxyfile"
-cd "$OUT" && doxygen Doxyfile
-echo "OK -> $OUT/html/index.html"
+mkdir -p build/doxygen
+doxygen docs/Doxyfile
+echo "OK -> $PWD/build/doxygen/html/index.html"
 '''
 
 [tasks."python:lint"]
@@ -401,8 +361,12 @@ build/venv-lint/bin/ruff format
 '''
 
 [tasks.clean]
-description = "Remove the native build and install trees"
-run = "rm -rf build_native install_native"
+description = "Remove build/ — the install trees, venvs and generated sources"
+# .zig-cache is deliberately NOT removed. It is the compilation cache, it reaches tens of GB,
+# and rebuilding it costs what a full build costs; `clean` is for the outputs, not the cache.
+# Delete it by hand when that is actually what you mean. Same reasoning as the closures,
+# which live outside build/ for exactly this reason -- see .gitignore.
+run = "rm -rf build"
 
 [tasks.lint]
 description = "Check for tabs in source files"

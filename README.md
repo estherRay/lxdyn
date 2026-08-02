@@ -115,52 +115,35 @@ $(sh tools/build-dir.sh)/bin/run_all_tests --gtest_filter=-'*LONG*'
 Please refer to [the Google Test documentation for details and other available
 options](https://github.com/google/googletest/blob/master/googletest/docs/advanced.md#running-a-subset-of-the-tests).
 
-### The CMake build
-
-CMake is kept as a second opinion — it compiles the same sources with g++ and
-libstdc++, which is worth having when a failure looks like it might be a zig or
-libc++ problem. It is **not** the supported build, and CI does not run it: it
-resolves Boost, gRPC and HDF5 from the environment, which is the dependency the
-zig lane exists to remove.
-
-```bash
-mise run configure && mise run build && mise run test
-```
-
 ## Running xdyn
 
 ### Running xdyn
 
-Build xdyn as above, then from `build_native/xdyn/executables` run:
+Build xdyn as above, then run it from the build tree:
 
 ```bash
-./xdyn <yaml file> [xdyn options]
+$(sh tools/build-dir.sh)/bin/xdyn <yaml file> [xdyn options]
 ```
 
 All options can be found in [the documentation](https://sirehna_naval_group.gitlab.io/sirehna/xdyn/#ligne-de-commande).
 
-For example, to run the first [tutorial](https://gitlab.com/sirehna_naval_group/sirehna/xdyn/-/blob/master/doc/user_fr/tutorial_01.md),
-from the executables/demos folder, you can run:
+The tutorials are not in the repository — they are generated, so that the input
+files and the code that reads them cannot drift apart. To run the first
+[tutorial](https://gitlab.com/sirehna_naval_group/sirehna/xdyn/-/blob/master/doc/user_fr/tutorial_01.md):
 
 ```bash
-./xdyn tutorial_01_falling_ball.yml --dt 0.1 --tend 1
+BIN=$(sh tools/build-dir.sh)/bin
+mkdir -p demos && cd demos
+"$BIN/generate_yaml_example" . && "$BIN/generate_stl_examples" .
+"$BIN/xdyn" tutorial_01_falling_ball.yml --dt 0.1 --tend 1
 ```
 
-### Running an installed xdyn
+That prints nothing: each tutorial names its own outputs, so this one writes
+`falling_ball.csv`, `.h5` and `.json` beside itself. Add `-o tsv` to get the
+results on the terminal instead.
 
-After `mise run install` the executable is in `install_native`. You can then run:
-
-```bash
-xdyn <yaml file> [xdyn options]
-```
-
-All options can be found in [the documentation](https://sirehna_naval_group.gitlab.io/sirehna/xdyn/#ligne-de-commande).
-
-For example, to run the first [tutorial](https://gitlab.com/sirehna_naval_group/sirehna/xdyn/-/blob/master/doc/user_fr/tutorial_01.md),
-
-```bash
-xdyn tutorial_01_falling_ball.yml --dt 0.1 --tend 1
-```
+There is no separate install step: `zig build` writes the executables straight
+into the build tree, and the container image is built by copying them.
 
 ### Running xdyn in a container
 
@@ -252,9 +235,10 @@ Add additional notes about how to deploy this on a live system.
 
 ## Built with
 
-* [CMake](https://cmake.org/) - Used to compile C++ code for various platforms.
-* [Make](https://www.gnu.org/software/make/) - Used for the one-step build described above.
-* [GCC](https://gcc.gnu.org/) - Compiler used for both the Windows & Linux: Visual Studio is currently **not** supported.
+* [Zig](https://ziglang.org/) - `zig cc` is the compiler and `build.zig` the build system, for Linux, Windows and aarch64 alike from a single host.
+* [LLVM](https://llvm.org/) - clang and libc++, which is what `zig cc` is; Visual Studio and libstdc++ are **not** supported.
+* [mise](https://mise.jdx.dev/) - Task runner for everything around the build.
+* [Nix](https://nixos.org/) - Pins the toolchain and the development shell.
 * [Boost](https://www.boost.org/) - For command-line options, regular expressions, filesystem library.
 * [yaml-cpp](https://github.com/jbeder/yaml-cpp) - To parse the input files.
 * [HDF5](https://support.hdfgroup.org/products/hdf5_tools/index.html) - To store the outputs.

@@ -1,8 +1,8 @@
 name: CI
 
-# The zig lane is what CI drives. CMake is a local cross-check now — it needs the system C++
-# libraries this toolchain exists to stop depending on, and proving it green here would mean
-# reinstating exactly that. See docs and `mise run configure`.
+# The zig lane is the only lane. CMake was kept as a local cross-check through C21 and is
+# gone as of C22, along with the dependency on whatever C++ libraries the host happened to
+# ship — which is the whole point of the toolchain this drives.
 
 on:
   push:
