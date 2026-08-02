@@ -67,11 +67,22 @@ run = "sh tools/deps/pack.sh"
 # -fqemu/-fwine rather than the host's binfmt_misc: where a foreign binary is registered, zig runs
 # it transparently and this lane passes without either emulator being declared anywhere. That is a
 # property of the developer's machine, not of the repository.
+[tasks."cross:aarch64"]
+description = "Run the unit suite for aarch64-linux-musl under qemu"
+run = "zig build test -Dtarget=aarch64-linux-musl -fqemu"
+
+[tasks."cross:win"]
+description = "Run the unit suite for x86_64-windows-gnu under wine"
+run = "zig build test -Dtarget=x86_64-windows-gnu -fwine"
+
 [tasks.cross]
-description = "Run the unit suite for aarch64-linux-musl and x86_64-windows-gnu (needs `nix develop .#cross`)"
+description = "Run both cross suites (needs `nix develop .#cross`)"
+# Sequential and explicit rather than `depends`, which mise is free to run in parallel:
+# two full builds at once interleave their output and double the peak disk. CI runs the
+# two granular tasks as separate jobs instead, so each only needs one target's closure.
 run = """
-zig build test -Dtarget=aarch64-linux-musl -fqemu
-zig build test -Dtarget=x86_64-windows-gnu -fwine
+mise run cross:aarch64
+mise run cross:win
 """
 
 [tasks.gdb]

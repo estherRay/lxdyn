@@ -1,0 +1,107 @@
+name: CI
+
+# The zig lane is what CI drives. CMake is a local cross-check now — it needs the system C++
+# libraries this toolchain exists to stop depending on, and proving it green here would mean
+# reinstating exactly that. See docs and `mise run configure`.
+
+on:
+  push:
+    branches: [zig-toolchain, master]
+  pull_request:
+  workflow_dispatch:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  # `nix develop` needs both, and the installer's own config is the only place to say so.
+  NIX_CONFIG: experimental-features = nix-command flakes
+  # mise refuses to read a config it has not been told to trust, and a runner's checkout is
+  # new every time. Without this every `mise run` fails with "are not trusted".
+  MISE_TRUSTED_CONFIG_PATHS: ${{ github.workspace }}
+
+jobs:
+  # 916 unit tests, the no-tabs lint, and the 19 integration scenarios.
+  native:
+    runs-on: ubuntu-latest
+    steps:
+      # Deliberately NOT submodules: recursive. .gitmodules resolves ssc and interfaces
+      # relative to this clone's remote, which here is the GitHub fork, where neither
+      # exists. `mise run setup` pins the absolute URLs; see its comment.
+      - uses: actions/checkout@v7
+      - uses: cachix/install-nix-action@v31
+
+      # ~34 MB against the hours build-all.sh takes. Hash-verified against
+      # tools/deps/assets.sha256, which also names the release tag.
+      - name: Dependency closure
+        run: nix develop --command mise run deps:fetch native
+      - name: Submodules
+        run: nix develop --command mise run setup
+
+      # gen.sh is a build.zig step, so codegen needs no line of its own here. This is a step
+      # of its own so a compile failure is attributable, and because `zig build test` runs
+      # the suite without installing the executables the integration lanes need.
+      - name: Build
+        run: nix develop --command zig build
+      - name: Unit suite
+        run: nix develop --command zig build test
+      - name: Lint
+        run: nix develop --command mise run lint
+      - name: CLI integration tests
+        run: nix develop --command mise run integration
+      - name: Protocol integration tests
+        run: nix develop --command mise run integration:grpc
+
+  # The same 916 for aarch64-linux-musl and x86_64-windows-gnu, under qemu and wine.
+  #
+  # One job per target rather than one job running both. A runner has ~14 GB of disk against
+  # an unpacked closure plus a full zig cache per target, and running both in one job is the
+  # tightest thing this workflow does -- it is what ran out of space when rehearsed on a
+  # 16 GB tmpfs. Splitting also parallelizes them and names the target in the failure.
+  cross:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        target: [aarch64, win]
+    steps:
+      - uses: actions/checkout@v7
+      - uses: cachix/install-nix-action@v31
+
+      # The native closure as well as the target's: gen.sh runs a *host* protoc, so a cross
+      # build still needs it. See build.zig's $XDYN_DEPS_HOST.
+      - name: Dependency closures
+        run: |
+          nix develop --command mise run deps:fetch native
+          nix develop --command mise run deps:fetch ${{ matrix.target }}
+      - name: Submodules
+        run: nix develop --command mise run setup
+
+      # -fqemu/-fwine name the emulators. Without them zig quietly uses the host's
+      # binfmt_misc where it is registered, which makes the lane a property of the machine.
+      - name: Unit suite
+        run: nix develop .#cross --command mise run cross:${{ matrix.target }}
+
+  # 285 binding tests on each of 3.10, 3.13 and 3.15, plus ruff and the wheel.
+  python:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: cachix/install-nix-action@v31
+
+      - name: Dependency closure
+        run: nix develop --command mise run deps:fetch native
+      - name: Submodules
+        run: nix develop --command mise run setup
+
+      - name: Lint
+        run: nix develop --command mise run python:lint
+      - name: Binding tests on 3.10, 3.13 and 3.15
+        run: nix develop --command mise run python:matrix
+      - name: Wheel
+        run: nix develop --command mise run python:wheel
+      - uses: actions/upload-artifact@v7
+        with:
+          name: xdyn-wheel
+          path: xdyn_wrapper_python/dist/*.whl
