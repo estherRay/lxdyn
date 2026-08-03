@@ -17,6 +17,10 @@ cd external/ssc/ssc && sh generate_module_header.sh
 description = "Build the x86_64-linux-gnu closure (glibc 2.28 floor) into libcxx-x86_64-linux-gnu/ (hours)"
 run = "tools/deps/build-all.sh x86_64-linux-gnu"
 
+[tasks."deps:x86_64-linux-musl"]
+description = "Build the x86_64-linux-musl closure — statically linked, no published asset yet"
+run = "tools/deps/build-all.sh x86_64-linux-musl"
+
 [tasks."deps:aarch64-linux-musl"]
 description = "Build the aarch64-linux-musl closure (needs deps:x86_64-linux-gnu)"
 run = "tools/deps/build-all.sh aarch64-linux-musl"

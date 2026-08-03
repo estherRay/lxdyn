@@ -21,6 +21,11 @@ case $FLAVOR in
     ZIG_TARGET=x86_64-linux-gnu.2.28
     B2_ARGS="architecture=x86 address-model=64"
     ;;
+  x86_64-linux-musl)
+    ZIG_TARGET=x86_64-linux-musl
+    B2_ARGS="architecture=x86 address-model=64"
+    CMAKE_SYSTEM=Linux CMAKE_PROCESSOR=x86_64
+    ;;
   aarch64-linux-musl)
     ZIG_TARGET=aarch64-linux-musl
     B2_ARGS="architecture=arm address-model=64"
@@ -36,7 +41,7 @@ case $FLAVOR in
     ;;
   *)
     echo "unknown flavor '$FLAVOR' -- expected one of:" >&2
-    echo "  x86_64-linux-gnu  aarch64-linux-musl  x86_64-windows-gnu" >&2
+    echo "  x86_64-linux-gnu  x86_64-linux-musl  aarch64-linux-musl  x86_64-windows-gnu" >&2
     echo "A macOS flavor is deliberately absent: it needs a real Apple SDK, because gRPC's" >&2
     echo "cf_engine and abseil's timezone lookup use CoreFoundation. See docs." >&2
     exit 1

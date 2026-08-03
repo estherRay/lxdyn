@@ -18,9 +18,10 @@
 # x86_64-linux-*gnu*, so libc and libm stay dynamic. Everything C++ is static, which is the
 # part that removed the .deb, but alpine is musl and these binaries cannot run on it at all.
 #
-# Reaching alpine needs `-Dtarget=x86_64-linux-musl` and a musl *closure*, and there is not
-# one yet. The resolver now names it `libcxx-x86_64-linux-musl` and says so, rather than
-# silently handing the glibc closure to a musl build. Multi-hour build, tracked, not here.
+# `-Dtarget=x86_64-linux-musl` and the matching closure now both exist, and musl links
+# statically -- so the destination is `FROM scratch` rather than alpine, with no base image at
+# all. Measured: the same 112 MB of binaries, 198 MB down to 117 MB. Switching is a separate
+# decision with its own verification, deliberately not folded into the rename.
 #
 # Staying on glibc is fine as long as the binaries are built for a glibc *floor* rather than
 # for whatever the build host has — see `deploy:stage`, which pins 2.28 to match the closure.
