@@ -371,7 +371,7 @@ build/venv-lint/bin/ruff format
 '''
 
 [tasks.clean]
-description = "Remove build/ — the install trees, venvs and generated sources"
+description = "Remove build/ — the install trees, the venvs and the generated docs"
 # .zig-cache is deliberately NOT removed. It is the compilation cache, it reaches tens of GB,
 # and rebuilding it costs what a full build costs; `clean` is for the outputs, not the cache.
 # Delete it by hand when that is actually what you mean. Same reasoning as the closures,

@@ -30,7 +30,8 @@
             pkgs.zig                                      # the compiler and the build system
             pkgs.mise                                     # task runner only — it pins no tool
                                                           # versions, nix does that here
-            pkgs.git                                      # gen.sh stamps the sha into the binary
+            pkgs.git                                      # build.zig stamps the commit into the
+                                                          # binaries; -Dgit-sha= overrides
             pkgs.curl.bin                                 # tools/deps/fetch.sh. The .bin output
                                                           # only: the full package puts its dev
                                                           # closure — openssl, krb5, nghttp2,

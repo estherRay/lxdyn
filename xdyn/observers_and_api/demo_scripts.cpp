@@ -14,7 +14,8 @@
  * `#embed` is C23; clang accepts it in C++ as an extension (zig 0.16 ships
  * clang 21), hence -Wno-c23-extensions on this one file in build.zig. The
  * embedded files are recorded in clang's depfile, so editing a script rebuilds
- * this TU — which the `has_side_effects` gen.sh step could not do.
+ * this TU — which the `has_side_effects`
+ * shell step it replaced could not do.
  */
 
 #include "demo_scripts.hpp"

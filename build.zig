@@ -14,17 +14,17 @@ const builtin = @import("builtin");
 // each against its own closure. A missing one warns rather than fails, so
 // `zig build --help` still works on a machine that has none.
 //
-// Codegen is produced by ./gen.sh into build/gen/ and
-// must be run before `zig build`. The libc++ deps live under a per-target closure
-// root — libcxx-native for x86_64, libcxx-aarch64 for -Dtarget=aarch64-*,
-// libcxx-win for -Dtarget=x86_64-windows-gnu — built by tools/deps/ and
-// overridable with -Ddeps=<path>
-// or $XDYN_DEPS (see resolveDepsRoot below). Each closure is merged into two
-// archives so lld resolves the absl/gRPC circular graph on-demand within one:
+// Codegen is part of the graph rather than a script to remember to run first —
+// see addCodegen. The libc++ deps live under a per-target closure root —
+// libcxx-native for x86_64, libcxx-aarch64 for -Dtarget=aarch64-*, libcxx-win for
+// -Dtarget=x86_64-windows-gnu — built by tools/deps/ and overridable with
+// -Ddeps=<path> or $XDYN_DEPS (see resolveDepsRoot below). Each closure is merged
+// into two archives so lld resolves the absl/gRPC circular graph on-demand within one:
 //   - libxdyndeps_core.a : everything except gtest/gmock
 //   - libxdyndeps_test.a : gtest + gmock + gmock_main
 //
-// Build options: -Ddeps=<path>  -Deigen=<path>   (`zig build --help` lists them)
+// Build options: -Ddeps=<path>  -Deigen=<path>  -Ddeps-host=<path>  -Dgit-sha=<sha>
+// (`zig build --help` lists them all)
 // =============================================================================
 
 // Per-target dependency closures (same recipes, different --target): resolved in build().
@@ -32,7 +32,7 @@ const builtin = @import("builtin");
 var deps_root: []const u8 = undefined;
 var eigen_include: ?[]const u8 = null;
 var target_is_windows = false;
-var gen_step: *std.Build.Step = undefined;
+var codegen: Codegen = undefined;
 var debug_build = false;
 var proto_flags: []const []const u8 = undefined;
 
@@ -74,7 +74,7 @@ pub fn build(b: *std.Build) void {
     debug_build = b.option(bool, "debug", "Build xdyn -O0 -g for gdb (deps stay optimized)") orelse false;
 
     installUnderBuildDir(b, target);
-    gen_step = addCodegenStep(b);
+    codegen = addCodegen(b);
     // The SSC libc++ shim (Hazard D/G) is xdyn-side source, not a dependency
     // artifact: it lives in-tree. -include needs a path the compiler can open from
     // whatever cwd zig runs it in, hence pathFromRoot (absolute, computed at runtime).
@@ -186,7 +186,7 @@ pub fn build(b: *std.Build) void {
     addCpp(b, xdyn, "xdyn/external_file_formats", &.{
         "stl_reader.cpp", "stl_writer.cpp", "stl_io_hdf5.cpp", "hdb_to_ast.cpp", "pretty_print_hdb.cpp",
     }, cpp_flags);
-    xdyn.addCSourceFiles(.{ .root = b.path("build/gen"), .files = &.{"get_git_sha.c"}, .flags = c_flags });
+    xdyn.addCSourceFile(.{ .file = codegen.git_sha_c, .flags = c_flags });
     addCpp(b, xdyn, "xdyn/interface_hdf5", &.{ "h5_tools.cpp", "h5_version.cpp" }, cpp_flags);
     addCpp(b, xdyn, "xdyn/interface_hdf5", &.{ "h5_tools.c", "h5_version.c" }, c_flags);
     // mesh: MeshIntersector + ClosingFacetComputer need the SSC libc++ shim.
@@ -218,10 +218,7 @@ pub fn build(b: *std.Build) void {
         "SurfaceElevationFromGRPC.cpp", "GRPCForceModel.cpp", "ToGRPC.cpp",
         "ToGRPCCommon.cpp", "FromGRPC.cpp", "GrpcControllerInterface.cpp",
     }, cpp_flags);
-    xdyn.addCSourceFiles(.{ .root = b.path("build/gen/proto"), .files = &.{
-        "wave_types.pb.cc", "wave_types.grpc.pb.cc", "wave_grpc.pb.cc", "wave_grpc.grpc.pb.cc",
-        "force.pb.cc", "force.grpc.pb.cc", "controller.pb.cc", "controller.grpc.pb.cc",
-    }, .flags = proto_flags });
+    addProtoSources(b, xdyn, &.{ "wave_types", "wave_grpc", "force", "controller" });
     addCpp(b, xdyn, "xdyn/listeners_and_controllers", &.{
         "builders.cpp", "listeners.cpp", "InterpolationModule.cpp", "Controller.cpp", "PIDController.cpp",
         "GrpcController.cpp", "CSVController.cpp", "CSVLineByLineReader.cpp", "TempFile.cpp", "CSVYaml.cpp",
@@ -259,7 +256,7 @@ pub fn build(b: *std.Build) void {
     }, cpp_flags);
 
     const libxdyn = b.addLibrary(.{ .name = "xdyn", .root_module = xdyn, .linkage = .static });
-    libxdyn.step.dependOn(gen_step);
+    libxdyn.step.dependOn(codegen.step);
     b.installArtifact(libxdyn);
 
     // =========================================================================
@@ -295,7 +292,7 @@ pub fn build(b: *std.Build) void {
         "xdyn/executables/CosimulationServiceImpl.cpp",
         "xdyn/executables/ErrorReporter.cpp",
         "xdyn/executables/gRPCChecks.cpp",
-    }, &.{ "cosimulation.pb.cc", "cosimulation.grpc.pb.cc" });
+    }, &.{"cosimulation"});
 
     buildExe(b, target, optimize, libxdyn, "xdyn-for-me", cpp_flags, &.{
         "xdyn/executables/display_command_line_arguments.cpp",
@@ -306,7 +303,7 @@ pub fn build(b: *std.Build) void {
         "xdyn/executables/ModelExchangeServiceImpl.cpp",
         "xdyn/executables/ErrorReporter.cpp",
         "xdyn/executables/gRPCChecks.cpp",
-    }, &.{ "model_exchange.pb.cc", "model_exchange.grpc.pb.cc" });
+    }, &.{"model_exchange"});
 
     buildExe(b, target, optimize, libxdyn, "xdyn-grpc-airy", cpp_flags, &.{
         "xdyn/executables/xdyn_grpc_airy.cpp",
@@ -354,7 +351,7 @@ pub fn build(b: *std.Build) void {
     linkWindowsSystemLibs(test_mod);
 
     const test_exe = b.addExecutable(.{ .name = "run_all_tests", .root_module = test_mod });
-    test_exe.step.dependOn(gen_step);
+    test_exe.step.dependOn(codegen.step);
     if (!target_is_windows) test_exe.pie = false;
     b.installArtifact(test_exe);
 
@@ -374,9 +371,10 @@ pub fn build(b: *std.Build) void {
 // Build layout and codegen (migration-plan.md A2 / A1b)
 // =============================================================================
 
-// Everything the build writes goes under one gitignored build/ — build/gen for codegen and
-// build/<arch>-<os>-<abi> for install trees — so `.gitignore` is two lines and `mise run
-// clean` is one. Uses the full triple, not <arch>-<os>: x86_64-linux-gnu and
+// Everything the build installs goes under one gitignored build/<arch>-<os>-<abi>, so
+// `.gitignore` is two lines and `mise run clean` is one. (Generated *sources* do not: they
+// are cache entries, and live under .zig-cache with everything else zig can rebuild.)
+// Uses the full triple, not <arch>-<os>: x86_64-linux-gnu and
 // x86_64-linux-musl are different binaries and must not share a directory.
 // Skipped when the user asked for something specific via --prefix or DESTDIR.
 fn installUnderBuildDir(b: *std.Build, target: std.Build.ResolvedTarget) void {
@@ -411,21 +409,120 @@ fn withFlags(b: *std.Build, base: []const []const u8, extra: []const []const u8)
     return out;
 }
 
-// Codegen is a build prerequisite, not a manual pre-step.
-// Two reasons it has to be wired into the graph: `mise run clean` now wipes build/gen, and
-// editing a .proto used to compile silently against stale gencode.
-//
-// has_side_effects because one of the four generators — SSC's own generate_module_header.sh
-// — writes *into the source tree* (SSC must not be modified), which zig cannot model
-// as a cached output. Cheap: gen.sh is idempotent and runs in <1 s, and zig's C cache is
-// content-hashed, so regenerating byte-identical files rebuilds nothing.
-fn addCodegenStep(b: *std.Build) *std.Build.Step {
-    const gen = b.addSystemCommand(&.{ "sh", "gen.sh" });
-    gen.setCwd(b.path("."));
-    gen.has_side_effects = true;
-    const step = b.step("gen", "Run the codegen prerequisite (gen.sh) on its own");
-    step.dependOn(&gen.step);
-    return &gen.step;
+// The three generators, and how much of each one zig is able to know about. This used to be
+// gen.sh, a shell script every compile step depended on wholesale: it re-ran on every build,
+// and editing a .proto compiled silently against stale gencode because nothing downstream
+// could tell the file had changed.
+const Codegen = struct {
+    // Ordering edge only. Depended on by every Compile, because one of the three writes into
+    // the source tree and so has no output path to hang a dependency off.
+    step: *std.Build.Step,
+    // protoc's two plugin outputs, and the git stamp: real cached artifacts, consumed by
+    // LazyPath so their *contents* reach the compile cache.
+    proto_messages: std.Build.LazyPath,
+    proto_services: std.Build.LazyPath,
+    git_sha_c: std.Build.LazyPath,
+};
+
+fn addCodegen(b: *std.Build) Codegen {
+    const step = b.step("gen", "Run the code generators on their own");
+
+    // 1. SSC's umbrella headers, from SSC's own script. has_side_effects because it writes
+    //    *into the source tree*: SSC is never modified, so its generator stays authoritative
+    //    and zig cannot model the result as a cached output. This is the one that can never
+    //    become a declared input/output pair, and forking its logic is not on the table.
+    //    Cheap enough not to matter: idempotent, <1 s, and zig's C cache is content-hashed,
+    //    so regenerating byte-identical headers rebuilds nothing.
+    const ssc_headers = b.addSystemCommand(&.{ "sh", "generate_module_header.sh" });
+    ssc_headers.setCwd(b.path("external/ssc/ssc"));
+    ssc_headers.has_side_effects = true;
+    step.dependOn(&ssc_headers.step);
+
+    // 2. protobuf + gRPC. protoc stays an external binary — folding it in would mean
+    //    reimplementing it — but every input it reads is now declared: the six .proto files
+    //    by content, and both binaries with them, because the gencode and the
+    //    libprotobuf/libgrpc it is compiled against come out of the same closure and a
+    //    closure swap has to invalidate it.
+    //
+    //    The *host* closure, never the target's: protoc and grpc_cpp_plugin run on this
+    //    machine whatever -Dtarget says, and the C++ they emit is target-independent.
+    const host = b.option([]const u8, "deps-host", "Native closure providing protoc (default: ./libcxx-native)") orelse
+        b.graph.environ_map.get("XDYN_DEPS_HOST") orelse
+        b.pathJoin(&.{ b.build_root.path orelse ".", "libcxx-native" });
+    const bin = b.pathJoin(&.{ host, "install", "bin" });
+    const protoc = b.pathJoin(&.{ bin, "protoc" });
+    // Warned, not failed, for the same reason resolveDepsRoot warns: `zig build --help` is
+    // where you find out the option naming the fix exists.
+    std.Io.Dir.cwd().access(b.graph.io, protoc, .{}) catch {
+        std.log.warn("no protoc under '{s}': codegen will fail. Point at the native closure " ++
+            "with -Ddeps-host=<path> or $XDYN_DEPS_HOST.", .{bin});
+    };
+
+    const gen_proto = b.addSystemCommand(&.{protoc});
+    gen_proto.setCwd(b.path("."));
+    gen_proto.addFileInput(.{ .cwd_relative = protoc });
+    gen_proto.addPrefixedFileArg("--plugin=protoc-gen-grpc=", .{ .cwd_relative = b.pathJoin(&.{ bin, "grpc_cpp_plugin" }) });
+    // Two output directories, where gen.sh wrote both into one. A Run step's outputs are
+    // distinct by construction and protoc is happy to write its two plugin outputs to two
+    // roots; both go on the include path in addCommonIncludes, which is what resolves the
+    // cross-includes — force.grpc.pb.cc includes "force.pb.h", which is in the other one.
+    const messages = gen_proto.addPrefixedOutputDirectoryArg("--cpp_out=", "proto");
+    const services = gen_proto.addPrefixedOutputDirectoryArg("--grpc_out=", "proto-grpc");
+    gen_proto.addPrefixedDirectoryArg("-I", b.path("interfaces/proto"));
+    for (proto_files) |name|
+        gen_proto.addFileArg(b.path(b.fmt("interfaces/proto/{s}.proto", .{name})));
+    step.dependOn(&gen_proto.step);
+
+    // 3. The git stamp, which stops being codegen: one interpolation into one C file, written
+    //    through WriteFile so the content is its own cache key. A new HEAD recompiles this one
+    //    TU and relinks; an unchanged one rebuilds nothing.
+    const sha = b.option([]const u8, "git-sha", "Commit stamped into the binaries (default: git rev-parse HEAD)") orelse
+        headSha(b);
+    const write_sha = b.addWriteFiles();
+    const git_sha_c = write_sha.add("get_git_sha.c", b.fmt(
+        \\#include "xdyn/get_git_sha/get_git_sha.h"
+        \\const char* get_git_sha()
+        \\{{
+        \\    return "{s}";
+        \\}}
+        \\
+    , .{sha}));
+    step.dependOn(&write_sha.step);
+
+    return .{
+        .step = step,
+        .proto_messages = messages,
+        .proto_services = services,
+        .git_sha_c = git_sha_c,
+    };
+}
+
+// "unknown" rather than a hard failure: a source export without .git has to keep building,
+// and -Dgit-sha is there for whoever packages it and does know the answer.
+fn headSha(b: *std.Build) []const u8 {
+    var code: u8 = 0;
+    const out = b.runAllowFail(
+        &.{ "git", "-C", b.build_root.path orelse ".", "rev-parse", "HEAD" },
+        &code,
+        .ignore,
+    ) catch return "unknown";
+    if (code != 0) return "unknown";
+    return b.dupe(std.mem.trim(u8, out, " \t\r\n"));
+}
+
+// The generated translation units for a set of .proto names. Named by proto rather than by
+// file so the message half and the service half cannot drift apart.
+fn addProtoSources(b: *std.Build, m: *std.Build.Module, names: []const []const u8) void {
+    for (names) |name| {
+        m.addCSourceFile(.{
+            .file = codegen.proto_messages.path(b, b.fmt("{s}.pb.cc", .{name})),
+            .flags = proto_flags,
+        });
+        m.addCSourceFile(.{
+            .file = codegen.proto_services.path(b, b.fmt("{s}.grpc.pb.cc", .{name})),
+            .flags = proto_flags,
+        });
+    }
 }
 
 // =============================================================================
@@ -530,8 +627,8 @@ fn addCommonIncludes(b: *std.Build, m: *std.Build.Module) void {
     m.addIncludePath(b.path("."));
     m.addIncludePath(b.path("external/ssc"));
     m.addIncludePath(b.path("external"));
-    m.addIncludePath(b.path("build/gen/proto"));
-    m.addIncludePath(b.path("build/gen/demo"));
+    m.addIncludePath(codegen.proto_messages);
+    m.addIncludePath(codegen.proto_services);
     m.addSystemIncludePath(b.path("external/eigen3-hdf5"));
     // The parent, not base91x/ itself: every include spells it "base91x/base91.hpp".
     m.addSystemIncludePath(b.path("external/thirdparty"));
@@ -546,19 +643,17 @@ fn buildExe(
     name: []const u8,
     flags: []const []const u8,
     sources: []const []const u8,
-    extra_protos: []const []const u8,
+    protos: []const []const u8,
 ) void {
     const m = b.createModule(.{ .target = target, .optimize = optimize, .link_libcpp = true });
     addCommonIncludes(b, m);
     m.addCSourceFiles(.{ .root = b.path("."), .files = sources, .flags = flags });
-    if (extra_protos.len > 0) {
-        m.addCSourceFiles(.{ .root = b.path("build/gen/proto"), .files = extra_protos, .flags = proto_flags });
-    }
+    addProtoSources(b, m, protos);
     m.linkLibrary(libxdyn);
     m.addObjectFile(.{ .cwd_relative = b.fmt("{s}/libxdyndeps_core.a", .{deps_root}) });
     linkWindowsSystemLibs(m);
     const exe = b.addExecutable(.{ .name = name, .root_module = m });
-    exe.step.dependOn(gen_step); // each exe compiles its own build/gen/proto sources
+    exe.step.dependOn(codegen.step); // for the in-tree half of the codegen
     if (!target_is_windows) exe.pie = false; // prebuilt deps may be non-PIC (PIE is N/A on COFF)
     b.installArtifact(exe);
 }
@@ -635,7 +730,7 @@ fn addPythonWrapper(
     // Deliberately not libxdyn's name: both end up in the same install tree, and libxdyn.a
     // next to libxdyn.so is how you get a link that silently picks the wrong one.
     const lib = b.addLibrary(.{ .name = "pyxdyn", .root_module = m, .linkage = .dynamic });
-    lib.step.dependOn(gen_step);
+    lib.step.dependOn(codegen.step);
     // libpython is deliberately NOT linked — the standard Linux contract is that Py* stays
     // undefined and resolves against the already-loaded interpreter. The cost is that a
     // *missing xdyn* symbol also links quietly and only shows up at import, which is why
@@ -706,6 +801,13 @@ fn concatFlags(b: *std.Build, base: []const []const u8, extra: []const []const u
 // =============================================================================
 // Source file lists
 // =============================================================================
+
+// All six, in one protoc invocation. wave_types has no service of its own, but
+// grpc_cpp_plugin emits a (near-empty) .grpc.pb.cc for it anyway and the build has always
+// compiled that, so the two halves stay symmetric.
+const proto_files = [_][]const u8{
+    "wave_types", "wave_grpc", "force", "controller", "cosimulation", "model_exchange",
+};
 
 const f2c_sources = [_][]const u8{
     "f77vers.c",  "i77vers.c",   "s_rnge.c",    "abort_.c",    "exit_.c",

@@ -8,7 +8,7 @@
 #
 #   libxdyndeps_core.a, libxdyndeps_test.a   what build.zig links
 #   install/include                          what build.zig compiles against
-#   install/bin                              native only -- gen.sh runs *this* protoc and
+#   install/bin                              native only -- build.zig runs *this* protoc
 #                                            grpc_cpp_plugin, so a clone that only ever
 #                                            fetched a closure cannot generate its sources
 #                                            without them
