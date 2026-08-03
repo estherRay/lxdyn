@@ -75,9 +75,14 @@ a prebuilt one in about 35 MB.
 
 ```bash
 nix develop
-mise run deps:fetch x86_64-linux-gnu   # or `mise run deps:x86_64-linux-gnu` to build it
-mise run setup                 # submodules and the SSC umbrella headers
+mise run bootstrap             # submodules, SSC umbrella headers, and the closure (~35 MB)
 ```
+
+`bootstrap` is `mise run setup` plus `mise run deps:fetch x86_64-linux-gnu`, and it is
+re-runnable: it leaves an existing closure alone. To build a closure from source instead of
+downloading it, use `nix develop .#deps` -- that shell adds the cmake and ninja the recipes
+need, and the emulators Boost's cross configure probes run -- then
+`mise run deps:x86_64-linux-gnu`. It takes hours.
 
 ### Installing
 

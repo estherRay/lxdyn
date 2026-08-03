@@ -61,6 +61,18 @@ DEPS=${XDYN_DEPS:-$REPO/libcxx-$FLAVOR}
 BUILD=$SRC/build/$FLAVOR
 mkdir -p "$SRC" "$BUILD" "$DEPS/install/lib" "$DEPS/install/include"
 
+# Checked here rather than three components in, when cmake is missing and the error is a
+# shell's. `nix develop` alone carries neither cmake nor ninja: C22 deleted the CMake lane and
+# C23 stopped provisioning its tools, and nothing in `zig build` wants them. They live in the
+# .#deps shell, together with the emulators b2's cross configure probes need.
+for tool in cmake ninja zig; do
+  command -v "$tool" > /dev/null 2>&1 || {
+    echo "tools/deps needs '$tool', which this shell does not provide." >&2
+    echo "Building a closure needs:  nix develop .#deps" >&2
+    exit 1
+  }
+done
+
 # cmake and b2 both exec these by name.
 PATH=$HERE/bin:$PATH
 
@@ -68,7 +80,10 @@ PATH=$HERE/bin:$PATH
 # native closure's must win: it is built from the same v1.78.1 tree, so its gencode matches.
 # A system protoc fails the version assertion the generated sources carry.
 if [ "$FLAVOR" != x86_64-linux-gnu ]; then
-  NATIVE_BIN=$REPO/libcxx-x86_64-linux-gnu/install/bin
+  # $XDYN_DEPS_HOST names the *host* closure, the same variable build.zig reads for codegen.
+  # A derivation cannot use the in-repo default -- its host closure is a store path -- so the
+  # coupling has to be nameable rather than hardcoded.
+  NATIVE_BIN=${XDYN_DEPS_HOST:-$REPO/libcxx-x86_64-linux-gnu}/install/bin
   [ -x "$NATIVE_BIN/protoc" ] || {
     echo "$FLAVOR needs the native closure first: no protoc under $NATIVE_BIN" >&2
     echo "run 'mise run deps:x86_64-linux-gnu'" >&2

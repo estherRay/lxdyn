@@ -3,6 +3,7 @@
   #
   #   nix develop            zig, mise, and the tools the lanes shell out to
   #   nix develop .#cross    the above + qemu-user and wine, to *run* the cross test suites
+  #   nix develop .#deps     the above + cmake and ninja, to *build* a dependency closure
   #
   #   zig build test         916 unit tests
   #   mise run cross         both cross suites
@@ -63,6 +64,11 @@
                                                           # target-agnostic. See the second
                                                           # boxed warning below before reaching
                                                           # for pkgs.binutils to get `nm`.
+            pkgs.zstd                                     # tools/deps/fetch.sh unpacks with it,
+                                                          # and pack.sh compresses with it. In
+                                                          # *this* shell rather than .#deps
+                                                          # because fetching a closure is the
+                                                          # common path and building one is not.
             pkgs.hdf5.bin                                 # h5dump, which the CLI integration
                                                           # tests diff against. The .bin output
                                                           # ONLY: pkgs.hdf5 itself is a C++
@@ -104,6 +110,20 @@
         # `zig build test -Dtarget=…` also runs a foreign binary transparently wherever binfmt_misc
         # is registered for it, which is why -fqemu/-fwine are passed explicitly by `mise run cross`:
         # relying on the host's binfmt registration would make the lane pass here and nowhere else.
+        # Building a closure *from source*, as opposed to fetching one. Extends `cross` rather
+        # than `default` because b2 runs its configure probes by *executing* what it compiles, so
+        # the aarch64 and Windows closures need qemu and wine (see tools/deps/build-boost.sh).
+        #
+        # cmake and ninja live here and not in `default` on purpose: `zig build` invokes neither,
+        # they exist only for tools/deps/, and fetching a closure is what almost everyone does.
+        # tools/deps/common.sh checks for them and names this shell, so the failure is legible.
+        deps = cross.overrideAttrs (old: {
+          nativeBuildInputs = old.nativeBuildInputs ++ [ pkgs.cmake pkgs.ninja ];
+          shellHook = old.shellHook + ''
+            echo "  closure toolchain: $(cmake --version | head -1), ninja $(ninja --version)"
+          '';
+        });
+
         cross = default.overrideAttrs (old: {
           nativeBuildInputs = old.nativeBuildInputs ++ [
             pkgs.qemu      # qemu-aarch64, user-mode

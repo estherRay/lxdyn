@@ -5,6 +5,21 @@ git submodule update --init --recursive
 cd external/ssc/ssc && sh generate_module_header.sh
 """
 
+[tasks.bootstrap]
+description = "First-time setup for a fresh clone: submodules, SSC headers and a closure"
+# The two things a fresh clone needs, as one command. `setup` stays separate and re-runnable --
+# it is how a clone poisoned by a failed submodule fetch recovers -- and the fetch is skipped
+# when a closure is already present, because fetch.sh deliberately refuses to overwrite one and
+# would otherwise make this task fail on its second run.
+run = '''
+mise run setup
+if [ -e libcxx-x86_64-linux-gnu ]; then
+    echo "bootstrap: libcxx-x86_64-linux-gnu is already here -- leaving it alone"
+else
+    mise run deps:fetch x86_64-linux-gnu
+fi
+'''
+
 # build.zig locates a closure through -Ddeps/$XDYN_DEPS, defaulting to libcxx-<flavor>/; the same
 # variable overrides where these tasks write one. Every non-host flavor needs x86_64-linux-gnu
 # first — they borrow its protoc — and is deliberately not declared as depending on it, since
