@@ -129,6 +129,16 @@ CMAKE_COMMON="$CMAKE_TARGET \
 cmake_build() {  # $1 = source dir, $2 = build subdir name, $3... = extra -D flags
   cmake_src=$1 cmake_name=$2
   shift 2
+  # A build directory remembers the source directory it was configured from, and refuses to be
+  # reused for another one. That is a correct thing for CMake to do and an unhelpful thing to
+  # hit: a dependency moving between external/ and libcxx-src/ is a repository change, not a
+  # user error, and $BUILD outlives it because the source tree is shared between flavors. The
+  # cache is disposable -- drop it rather than making everyone delete it by hand.
+  if [ -f "$BUILD/$cmake_name/CMakeCache.txt" ] && ! grep -qxF \
+       "CMAKE_HOME_DIRECTORY:INTERNAL=$cmake_src" "$BUILD/$cmake_name/CMakeCache.txt"; then
+    echo "$cmake_name: cached source directory has moved -- reconfiguring from scratch"
+    rm -rf "$BUILD/$cmake_name"
+  fi
   cmake -S "$cmake_src" -B "$BUILD/$cmake_name" -G Ninja $CMAKE_COMMON "$@"
   cmake --build "$BUILD/$cmake_name" -j"$(nproc)"
   cmake --install "$BUILD/$cmake_name"

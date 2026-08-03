@@ -1,6 +1,5 @@
 #!/bin/sh
-# Fetch every upstream source once into libcxx-src/, shared by all three flavors. yaml-cpp is
-# absent on purpose: it comes from this repo's own external/ submodule, not from upstream.
+# Fetch every upstream source once into libcxx-src/, shared by every flavor.
 set -e
 FLAVOR=${1:-x86_64-linux-gnu}
 . "$(dirname "$0")/common.sh"
@@ -9,6 +8,11 @@ clone() {  # $1 = url, $2 = tag, $3 = directory
   [ -d "$SRC/$3" ] || git clone --depth 1 --branch "$2" "$1" "$SRC/$3"
 }
 
+# yaml-cpp used to come from an external/ submodule instead, so that the closure and the CMake
+# lane compiled the same sources. C22 deleted that lane and the closure is now yaml-cpp's only
+# consumer, so the submodule bought nothing and cost something: a git submodule is invisible to
+# a Nix flake source, which would have left the one dependency Nix could not pin.
+clone https://github.com/jbeder/yaml-cpp yaml-cpp-0.9.0 yaml-cpp
 clone https://github.com/google/googletest v1.15.2 googletest
 clone https://github.com/HDFGroup/hdf5 hdf5_1.14.6 hdf5
 

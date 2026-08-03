@@ -644,7 +644,7 @@ fn addCommonIncludes(b: *std.Build, m: *std.Build.Module) void {
     m.addIncludePath(b.path("external"));
     m.addIncludePath(codegen.proto_messages);
     m.addIncludePath(codegen.proto_services);
-    m.addSystemIncludePath(b.path("external/eigen3-hdf5"));
+    m.addSystemIncludePath(b.path("external/thirdparty/eigen3-hdf5"));
     // The parent, not base91x/ itself: every include spells it "base91x/base91.hpp".
     m.addSystemIncludePath(b.path("external/thirdparty"));
     if (eigen_include) |eigen| m.addSystemIncludePath(.{ .cwd_relative = eigen });

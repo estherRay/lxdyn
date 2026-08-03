@@ -1,17 +1,11 @@
 #!/bin/sh
-# yaml-cpp comes from this repo's external/ submodule so that the closure and the CMake lane
-# compile the same sources. It is also what ties a closure to one clone: change the submodule
-# pin and the closure is stale.
+# yaml-cpp comes from libcxx-src/ like every other upstream, pinned to a tag by
+# fetch-sources.sh. It used to be an external/ submodule; see that script for why it is not.
 set -e
 FLAVOR=${1:-x86_64-linux-gnu}
 . "$(dirname "$0")/common.sh"
 
-[ -f "$REPO/external/yaml-cpp/CMakeLists.txt" ] || {
-  echo "external/yaml-cpp is empty -- run 'mise run setup' first" >&2
-  exit 1
-}
-
-cmake_build "$REPO/external/yaml-cpp" yaml-cpp \
+cmake_build "$SRC/yaml-cpp" yaml-cpp \
   -DYAML_CPP_BUILD_TESTS=OFF \
   -DYAML_CPP_BUILD_TOOLS=OFF \
   -DYAML_BUILD_SHARED_LIBS=OFF

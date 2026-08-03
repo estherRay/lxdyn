@@ -5,12 +5,6 @@
 [submodule "interfaces"]
 	path = interfaces
 	url = https://github.com/naval-group/interfaces.git
-[submodule "code/yaml-cpp"]
-	path = external/yaml-cpp
-	url = https://github.com/jbeder/yaml-cpp
 [submodule "external/websocketpp"]
 	path = external/websocketpp
 	url = https://github.com/LocutusOfBorg/websocketpp.git
-[submodule "code/eigen3-hdf5"]
-	path = external/eigen3-hdf5
-	url = https://github.com/garrison/eigen3-hdf5.git

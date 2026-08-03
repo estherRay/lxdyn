@@ -404,7 +404,7 @@ run = "rm -rf build"
 description = "Check for tabs in source files"
 run = """
 if grep --recursive --include='*.cpp' --include='*.c' --include='*.hpp' --include='*.h' \
-        --exclude-dir=ssc --exclude-dir=yaml-cpp --exclude-dir=websocketpp \
+        --exclude-dir=ssc --exclude-dir=websocketpp \
         --exclude-dir=eigen3-hdf5 --exclude-dir=thirdparty -P "\t" xdyn/ ; then
     echo "Tabs found in the lines shown above."
     exit 1
