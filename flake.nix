@@ -1,17 +1,15 @@
 {
-  # Second lane for the CMake build, independent of the frozen Sirehna docker images.
+  # The development shell for the zig/libc++ build.
   #
-  #   nix develop            CMake + g++, and the zig the tools/deps/ recipes call
+  #   nix develop            zig, mise, and the tools the lanes shell out to
   #   nix develop .#cross    the above + qemu-user and wine, to *run* the cross test suites
   #
-  #   mise run configure && mise run build && mise run test
-  #   mise run cross
+  #   zig build test         916 unit tests
+  #   mise run cross         both cross suites
   #
-  # This shell provisions CMake's dependencies, so it is transitional: it exists to prove the
-  # tree builds outside docker, and it goes away with CMake itself. yaml-cpp and websocketpp
-  # are deliberately absent — both are submodules built in-tree, so that the docker lane and
-  # this one compile the same sources.
-  description = "xdyn — CMake build environment, second lane alongside docker";
+  # This shell provides TOOLS. It provides no C++ library, and adding one is the mistake this
+  # whole toolchain exists to make impossible — see the boxed warning below.
+  description = "xdyn — zig/libc++ development shell";
 
   inputs.nixpkgs.url = "github:NixOS/nixpkgs/nixos-unstable";
 
@@ -19,53 +17,84 @@
     let
       system = "x86_64-linux";
       pkgs = import nixpkgs { inherit system; };
-      hdf5Cxx     = pkgs.hdf5.override  { cppSupport   = true; };  # FIND_PACKAGE(HDF5 COMPONENTS C CXX HL)
-      boostStatic = pkgs.boost.override { enableStatic = true; };  # CMakeLists sets Boost_USE_STATIC_LIBS ON
-      # These are libstdc++ builds, and mkShell puts every one of their dev outputs on CPATH,
-      # which zig cc honours. tools/deps/ is immune only because it always names an explicit
-      # -target, which switches zig to its own bundled headers and nothing else.
-      cxxLibs = [
-        boostStatic hdf5Cxx
-        pkgs.eigen_5 pkgs.gtest                       # eigen_5 clears an Eigen -Werror=uninitialized false positive
-        pkgs.protobuf pkgs.grpc pkgs.abseil-cpp
-        pkgs.openssl pkgs.re2 pkgs.c-ares pkgs.zlib   # named in grpc++.pc Requires, so pkg-config needs them present
-      ];
     in {
       devShells.${system} = rec {
-        default = (pkgs.mkShell.override { stdenv = pkgs.gcc16Stdenv; }) {
-          nativeBuildInputs = [
-            pkgs.cmake pkgs.ninja pkgs.pkg-config pkgs.git pkgs.mise
-            pkgs.gfortran                                 # CMakeLists links gfortran for SSC's f2c
-            pkgs.zig pkgs.curl                            # tools/deps/ recipes; not used by the CMake lane
-            pkgs.uv                                       # owns the Python envs, interpreters included. No
-                                                          # pkgs.python* beside it: a nixpkgs interpreter
-                                                          # exports PYTHONPATH into every other interpreter
-                                                          # in the shell, which once made a 3.10 venv report
-                                                          # a cpython-313 ABI tag.
-            pkgs.gdb                                      # mise run gdb. Without it the task silently
-                                                          # falls through to whatever gdb the host has,
-                                                          # or to none. .gdbinit needs one built with
-                                                          # Python for $_regex.
-            pkgs.doxygen                                  # mise run doc:cpp. Was found by
-                                                          # find_package(Doxygen) and silently
-                                                          # skipped when absent.
-            pkgs.llvm                                     # llvm-strip, for tools/deps/pack.sh and the
-                                                          # wheel. binutils' strip is built for one
-                                                          # architecture: on the aarch64 and Windows
-                                                          # archives it fails per member and still
-                                                          # exits 0. llvm-strip is target-agnostic.
-          ];
-          buildInputs = cxxLibs;
+        # mkShellNoCC, not mkShell: mkShell wires in a cc-wrapper whose setup hook exports
+        # NIX_CFLAGS_COMPILE and CPATH for every dev output in scope. zig cc honours CPATH,
+        # so that wrapper is a route for nixpkgs headers — and behind them nixpkgs' libstdc++
+        # — to reach a compile that is supposed to see only zig's own libc++ and the closure.
+        # There is no host C or C++ compiler in this shell because nothing needs one: zig cc
+        # compiles every C and C++ source, including SSC's f2c, which is C rather than Fortran.
+        default = pkgs.mkShellNoCC {
+          packages = [
+            pkgs.zig                                      # the compiler and the build system
+            pkgs.mise                                     # task runner only — it pins no tool
+                                                          # versions, nix does that here
+            pkgs.git                                      # gen.sh stamps the sha into the binary
+            pkgs.curl.bin                                 # tools/deps/fetch.sh. The .bin output
+                                                          # only: the full package puts its dev
+                                                          # closure — openssl, krb5, nghttp2,
+                                                          # zstd and eight more — on
+                                                          # PKG_CONFIG_PATH, for a program this
+                                                          # shell only ever *runs*.
+            pkgs.pkg-config                               # build.zig's fourth eigen probe
 
-          # CMAKE_PREFIX_PATH must be set by hand. nixpkgs only passes it during a derivation's
-          # cmakeConfigurePhase, and this shell invokes cmake directly — leave it unset and
-          # find_package(HDF5) resolves to the host's /usr/lib64/cmake/hdf5, a libstdc++ build
-          # being linked into a gcc16Stdenv compile.
+            pkgs.uv                                       # owns the Python envs, interpreters
+                                                          # included. No pkgs.python* beside it:
+                                                          # a nixpkgs interpreter exports its own
+                                                          # PYTHONPATH into every other
+                                                          # interpreter in the shell, which once
+                                                          # made a 3.10 venv report a cpython-313
+                                                          # ABI tag.
+            pkgs.gdb                                      # mise run gdb. Without it the task
+                                                          # silently falls through to whatever
+                                                          # gdb the host has, or to none.
+                                                          # .gdbinit needs one built with Python
+                                                          # for $_regex.
+            pkgs.doxygen                                  # mise run doc:cpp
+            pkgs.llvm                                     # llvm-strip and llvm-nm, for
+                                                          # tools/deps/, deploy:stage and the
+                                                          # wheel. Their binutils equivalents are
+                                                          # built for one architecture: on the
+                                                          # aarch64 and Windows archives strip
+                                                          # fails per member and still exits 0
+                                                          # (Hazard R). The llvm tools are
+                                                          # target-agnostic. See the second
+                                                          # boxed warning below before reaching
+                                                          # for pkgs.binutils to get `nm`.
+            pkgs.hdf5.bin                                 # h5dump, which the CLI integration
+                                                          # tests diff against. The .bin output
+                                                          # ONLY: pkgs.hdf5 itself is a C++
+                                                          # library and belongs nowhere near this
+                                                          # list.
+          ];
+
+          # Header-only, so it carries no compiled std ABI and is not a bucket-3 dependency.
+          # In buildInputs rather than packages so pkg-config's setup hook puts it on
+          # PKG_CONFIG_PATH, which is how build.zig's probe finds it. eigen_5 specifically:
+          # it clears an Eigen -Werror=uninitialized false positive.
+          buildInputs = [ pkgs.eigen_5 ];
+
           shellHook = ''
-            export CMAKE_PREFIX_PATH="${pkgs.lib.concatMapStringsSep ":" pkgs.lib.getDev cxxLibs}"
-            echo "xdyn devShell: $(g++ --version | head -1)"
+            echo "xdyn devShell: $(zig version), $(uv --version)"
           '';
         };
+
+        # ⛔ Do not add pkgs.boost / pkgs.grpc / pkgs.hdf5 / pkgs.yaml-cpp / pkgs.gtest here.
+        # They are libstdc++ builds. Linking one against a zig cc object fails on mangling
+        # (Hazard A), and getting one in by accident risks two libc++ versions in a single
+        # graph (Hazard B), which fails at link time if you are lucky and at runtime if you
+        # are not. Every C++ library xdyn links comes from the closure in tools/deps/, built
+        # by zig cc against zig's libc++. That is the rule the first attempt at this migration
+        # died for.
+
+        # ⛔ Do not add pkgs.binutils either, however much `nm` or `ld` is wanted. Its setup hook
+        # exports NIX_LDFLAGS and puts a *wrapped* ld and as on PATH ahead of /usr/bin, so a host
+        # cc compiles against host headers and then links against the nix store. The executables
+        # that come out abort before main. Nothing in this repo compiles with a host cc — but uv
+        # does, whenever it fills an interpreter for which a dependency publishes no wheel
+        # (numpy 1.26.4 on 3.13 and 3.15), and that is how this was found: green here, red in CI.
+        # llvm-nm is already in the list and reads every flavor.
 
         # zig cross-*compiles* with nothing added; these only *run* the results, which is why they
         # are a separate shell rather than part of the default one — wine alone drags in a

@@ -1,4 +1,5 @@
 const std = @import("std");
+const builtin = @import("builtin");
 
 // =============================================================================
 // Option-B build: zig cc / libc++ via addCSourceFiles (build-toolchain.md §9.2).
@@ -35,8 +36,31 @@ var gen_step: *std.Build.Step = undefined;
 var debug_build = false;
 var proto_flags: []const []const u8 = undefined;
 
+// The native build names its glibc floor instead of detecting one, exactly as tools/deps/
+// already does for every closure compile. "Native" is not a stable target: zig takes the
+// dynamic linker from its own PT_INTERP and the glibc *version* from whatever libc it finds
+// on disk, and those need not be the same glibc. Under `nix develop` they are not — the
+// linker is nixpkgs' 2.42 and the libm is the host's 2.44 — so the binary links cleanly and
+// then dies at startup with "version `GLIBC_2.43' not found". The old CMake devShell hid
+// this: its cc-wrapper exported LIBRARY_PATH into the nix store, so zig found one glibc for
+// both. Naming the floor matches the floor the closure itself was built at
+// (tools/deps/common.sh).
+//
+// This fixes the *version* half only. The dynamic linker path still comes from zig's own
+// PT_INTERP, so a target-less build under `nix develop` still bakes a /nix/store interpreter
+// and runs on this machine alone. Anything that leaves the machine -- the deploy image above
+// all -- must name an explicit -Dtarget, which switches zig to /lib64/ld-linux-x86-64.so.2.
+// mise's deploy:stage does exactly that, for exactly this reason.
+//
+// `-Dtarget=` still overrides, and the install tree is unaffected: installUnderBuildDir
+// names it <arch>-<os>-<abi>, and abi stringifies as `gnu` with or without a version.
+const native_default: std.Target.Query = if (builtin.os.tag == .linux)
+    .{ .abi = .gnu, .glibc_version = .{ .major = 2, .minor = 28, .patch = 0 } }
+else
+    .{};
+
 pub fn build(b: *std.Build) void {
-    const target = b.standardTargetOptions(.{});
+    const target = b.standardTargetOptions(.{ .default_target = native_default });
     target_is_windows = target.result.os.tag == .windows;
     deps_root = resolveDepsRoot(b, target);
     eigen_include = resolveEigen(b);

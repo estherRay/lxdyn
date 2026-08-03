@@ -24,7 +24,7 @@ cmake_build "$SRC/grpc" grpc \
   -DgRPC_BUILD_GRPC_RUBY_PLUGIN=OFF \
   $GRPC_EXTRA
 
-if ! nm "$DEPS/install/lib/libgrpc++.a" | grep -q 'St3__1'; then
+if ! llvm-nm "$DEPS/install/lib/libgrpc++.a" | grep -q 'St3__1'; then
   echo "grpc: no libc++ mangling in the output" >&2
   exit 1
 fi

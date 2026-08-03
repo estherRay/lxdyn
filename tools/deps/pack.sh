@@ -36,7 +36,7 @@ STRIP=${XDYN_PACK_STRIP:-1}
 # rather than trusted: the recipes pin it, but a closure built before the pin looks identical
 # from the outside. See common.sh for why __isoc23_* is the tell.
 if [ "$FLAVOR" = native ]; then
-    stale=$(nm --undefined-only "$DEPS/libxdyndeps_core.a" 2>/dev/null | grep -c __isoc23_ || true)
+    stale=$(llvm-nm --undefined-only "$DEPS/libxdyndeps_core.a" 2>/dev/null | grep -c __isoc23_ || true)
     [ "$stale" -eq 0 ] || {
         echo "pack: $DEPS was built against a glibc newer than the 2.28 floor" >&2
         echo "      ($stale undefined __isoc23_* symbols; rebuild with 'mise run deps:native')" >&2

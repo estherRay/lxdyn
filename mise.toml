@@ -119,13 +119,21 @@ description = "Build for the deploy glibc floor and stage stripped binaries into
 # builds every dependency at that floor, so raising it here buys nothing and lowering it
 # means rebuilding the closure. Keep the two numbers equal.
 #
+# The explicit -Dtarget is doing two jobs, and the second one is why the image works at all.
+# It pins the glibc floor, obviously. It also makes zig emit the *standard* interpreter path:
+# a target-less build inside `nix develop` bakes /nix/store/...-glibc-2.42/lib/ld-linux-x86-64.so.2
+# as PT_INTERP, which runs on that machine and nowhere else -- there is no /nix/store in a
+# container. Naming a target switches zig to /lib64/ld-linux-x86-64.so.2. Never stage a
+# target-less build.
+#
 # --prefix on purpose: build.zig names its install trees <arch>-<os>-<abi>, which does NOT
 # include the glibc version, so this build and the native one would otherwise both land in
 # build/x86_64-linux-gnu/ and silently overwrite each other.
 #
-# llvm-strip, never binutils strip, and no fallback -- Hazard R. A strip built for one
-# architecture no-ops on anything else and still exits 0, so a fallback does not degrade
-# gracefully, it ships an unstripped image while reporting success.
+# llvm-strip and llvm-nm, never the binutils ones, and no fallback -- Hazard R. A strip built
+# for one architecture no-ops on anything else and still exits 0, so a fallback does not
+# degrade gracefully, it ships an unstripped image while reporting success. The devShell
+# deliberately carries no binutils at all, so a bare `nm` here would be the host's.
 #
 # Six binaries, not all thirteen. run_all_tests, test_hs, yml2test and friends are development
 # tools; shipping them would triple the image to no one's benefit. The two generators earn
@@ -133,7 +141,9 @@ description = "Build for the deploy glibc floor and stage stripped binaries into
 run = '''
 set -e
 DEPLOY_GLIBC=${DEPLOY_GLIBC:-2.28}
-command -v llvm-strip > /dev/null 2>&1 || { echo "deploy:stage needs llvm-strip (pkgs.llvm)" >&2; exit 1; }
+for t in llvm-strip llvm-nm; do
+    command -v $t > /dev/null 2>&1 || { echo "deploy:stage needs $t (pkgs.llvm)" >&2; exit 1; }
+done
 zig build -Dtarget=x86_64-linux-gnu.$DEPLOY_GLIBC --prefix build/deploy-build
 rm -rf build/deploy
 mkdir -p build/deploy
@@ -148,7 +158,7 @@ done
 # The floor is folded into the list before sorting, so requiring *less* than it is fine and
 # only exceeding it fails. Checking `= floor` instead would reject a binary that got more
 # portable.
-REQUIRED=$(nm -D --undefined-only build/deploy/xdyn | grep -oE 'GLIBC_[0-9.]+' | sed 's/^GLIBC_//')
+REQUIRED=$(llvm-nm -D --undefined-only build/deploy/xdyn | grep -oE 'GLIBC_[0-9.]+' | sed 's/^GLIBC_//')
 MAX=$(printf '%s\n%s\n' "$REQUIRED" "$DEPLOY_GLIBC" | sort -V | tail -1)
 echo "max glibc required: $(printf '%s\n' "$REQUIRED" | sort -V | tail -1) (floor: $DEPLOY_GLIBC)"
 [ "$MAX" = "$DEPLOY_GLIBC" ] || {

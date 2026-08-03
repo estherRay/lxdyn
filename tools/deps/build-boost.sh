@@ -28,7 +28,7 @@ JAM
 # A wrapper b2 failed to pick up leaves a libstdc++ build that links against libc++ code and
 # then breaks at the first std::string crossing the boundary. b2 names its archives .lib under
 # target-os=windows, so match the stem rather than the extension.
-if nm "$DEPS/install/lib/"libboost_filesystem.* 2>/dev/null | grep -q '__cxx11'; then
+if llvm-nm "$DEPS/install/lib/"libboost_filesystem.* 2>/dev/null | grep -q '__cxx11'; then
   echo "boost: libstdc++ ABI in the output -- the zig wrapper did not take" >&2
   exit 1
 fi
