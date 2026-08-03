@@ -2,7 +2,7 @@
 # The whole gRPC stack, including the abseil, protobuf, re2, c-ares, upb, boringssl and zlib it
 # vendors. Every one of them exports mangled std:: symbols, so none may come from the host.
 set -e
-FLAVOR=${1:-native}
+FLAVOR=${1:-x86_64-linux-gnu}
 . "$(dirname "$0")/common.sh"
 
 # CMAKE_DISABLE_FIND_PACKAGE_systemd: gRPC picks up a host libsystemd if one is installed, and

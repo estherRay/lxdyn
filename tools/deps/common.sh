@@ -2,7 +2,7 @@
 HERE=$(cd "$(dirname "$0")" && pwd)
 REPO=$(cd "$HERE/../.." && pwd)
 
-FLAVOR=${FLAVOR:-native}
+FLAVOR=${FLAVOR:-x86_64-linux-gnu}
 
 # Every flavor names an explicit target, including the native one. That is what makes the build
 # hermetic: with no -target, zig treats the compile as native and honours CPATH, which inside
@@ -13,17 +13,20 @@ FLAVOR=${FLAVOR:-native}
 # Ubuntu 18.04. It also fixes what a published closure can link against: build against a newer
 # glibc and its headers redirect to symbols (__isoc23_strtol and friends) that older systems
 # do not have, so the final link fails on the user's machine rather than here.
+# A flavor IS its target triple. Two-thirds of one does not identify a closure: x86_64-linux-gnu
+# and x86_64-linux-musl differ only in the libc, which is exactly what a closure carries. The
+# directory, the release asset, the mise task and build.zig's default all use this name.
 case $FLAVOR in
-  native)
+  x86_64-linux-gnu)
     ZIG_TARGET=x86_64-linux-gnu.2.28
     B2_ARGS="architecture=x86 address-model=64"
     ;;
-  aarch64)
+  aarch64-linux-musl)
     ZIG_TARGET=aarch64-linux-musl
     B2_ARGS="architecture=arm address-model=64"
     CMAKE_SYSTEM=Linux CMAKE_PROCESSOR=aarch64
     ;;
-  win)
+  x86_64-windows-gnu)
     ZIG_TARGET=x86_64-windows-gnu
     B2_ARGS="target-os=windows threadapi=win32 architecture=x86 address-model=64"
     CMAKE_SYSTEM=Windows CMAKE_PROCESSOR=AMD64
@@ -32,11 +35,19 @@ case $FLAVOR in
     GRPC_EXTRA=-DOPENSSL_NO_ASM=ON
     ;;
   *)
-    echo "unknown flavor '$FLAVOR' -- expected native, aarch64 or win" >&2
+    echo "unknown flavor '$FLAVOR' -- expected one of:" >&2
+    echo "  x86_64-linux-gnu  aarch64-linux-musl  x86_64-windows-gnu" >&2
+    echo "A macOS flavor is deliberately absent: it needs a real Apple SDK, because gRPC's" >&2
+    echo "cf_engine and abseil's timezone lookup use CoreFoundation. See docs." >&2
     exit 1
     ;;
 esac
 export ZIG_TARGET
+
+# b2 keys its object directories off the toolset name, so each flavor needs its own -- but the
+# triple's dashes cannot go in one: b2 splits `toolset=name-version` on the first dash. Strip
+# them. (The `zig` prefix is separate and also load-bearing; see build-boost.sh.)
+B2_TAG=$(echo "$FLAVOR" | tr -d -- '-')
 
 # Sources are shared by every flavor; only the install tree and the merged archives are per-flavor.
 # Keeping build trees out of $DEPS leaves it holding exactly what gets published.
@@ -51,11 +62,11 @@ PATH=$HERE/bin:$PATH
 # gRPC find_program()s a HOST protoc and grpc_cpp_plugin for its own build-time codegen. The
 # native closure's must win: it is built from the same v1.78.1 tree, so its gencode matches.
 # A system protoc fails the version assertion the generated sources carry.
-if [ "$FLAVOR" != native ]; then
-  NATIVE_BIN=$REPO/libcxx-native/install/bin
+if [ "$FLAVOR" != x86_64-linux-gnu ]; then
+  NATIVE_BIN=$REPO/libcxx-x86_64-linux-gnu/install/bin
   [ -x "$NATIVE_BIN/protoc" ] || {
     echo "$FLAVOR needs the native closure first: no protoc under $NATIVE_BIN" >&2
-    echo "run 'mise run deps:native'" >&2
+    echo "run 'mise run deps:x86_64-linux-gnu'" >&2
     exit 1
   }
   PATH=$NATIVE_BIN:$PATH
@@ -68,7 +79,7 @@ export PATH
 # A closure may not discover anything through the shell that happens to be running it.
 unset CMAKE_PREFIX_PATH CMAKE_PROGRAM_PATH CMAKE_INCLUDE_PATH CMAKE_LIBRARY_PATH CMAKE_FRAMEWORK_PATH
 
-# Native deliberately gets no toolchain file. Setting CMAKE_SYSTEM_NAME turns CMAKE_CROSSCOMPILING
+# The host-matching flavor deliberately gets no toolchain file. Setting CMAKE_SYSTEM_NAME turns CMAKE_CROSSCOMPILING
 # on even when it names the host, and gRPC then hunts for a host protoc instead of building one.
 if [ -n "$CMAKE_SYSTEM" ]; then
   TOOLCHAIN=$BUILD/toolchain.cmake

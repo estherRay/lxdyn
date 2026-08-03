@@ -1,8 +1,8 @@
 #!/bin/sh
-# Download a prebuilt dependency closure into libcxx-<flavor>/, instead of spending hours
+# Download a prebuilt dependency closure into libcxx-<triple>/, instead of spending hours
 # building it with build-all.sh.
 #
-#   tools/deps/fetch.sh native      # or: mise run deps:fetch native
+#   tools/deps/fetch.sh x86_64-linux-gnu   # or: mise run deps:fetch x86_64-linux-gnu
 #
 # The asset is not content-addressed by its name, so the hash in assets.sha256 is what
 # identifies it -- a moved tag or a re-uploaded file is caught here rather than by a
@@ -11,17 +11,26 @@
 # Overridable for a fork or a local mirror:
 #   XDYN_DEPS_REPO=owner/name  XDYN_DEPS_TAG=closures-v1  XDYN_DEPS_URL=file:///path/to/dir
 set -e
-FLAVOR=${1:-native}
+FLAVOR=${1:-x86_64-linux-gnu}
 HERE=$(cd "$(dirname "$0")" && pwd)
 REPO=$(cd "$HERE/../.." && pwd)
 
+# The published assets still carry the pre-rename names. Renaming a closure's *directory*
+# does not change its bytes, and the rule in assets.sha256 is that a new name means a new tag
+# and a re-upload -- not worth spending on a rename. The next tag bump, whenever a recipe or
+# the zig version or the floor actually changes, publishes them under the triple and this
+# table goes away.
 case $FLAVOR in
-    native | aarch64 | win) ;;
-    *) echo "fetch: unknown flavor '$FLAVOR' -- expected native, aarch64 or win" >&2; exit 1 ;;
+    x86_64-linux-gnu)    ASSET=lxdyn-deps-native.tar.zst ;;
+    aarch64-linux-musl)  ASSET=lxdyn-deps-aarch64.tar.zst ;;
+    x86_64-windows-gnu)  ASSET=lxdyn-deps-win.tar.zst ;;
+    *)
+        echo "fetch: unknown flavor '$FLAVOR' -- expected one of:" >&2
+        echo "  x86_64-linux-gnu  aarch64-linux-musl  x86_64-windows-gnu" >&2
+        exit 1 ;;
 esac
 
 SUMS=$HERE/assets.sha256
-ASSET=lxdyn-deps-$FLAVOR.tar.zst
 
 # One file is the source of truth for both the tag and the hashes, so they cannot drift apart.
 TAG=${XDYN_DEPS_TAG:-$(sed -n 's/^# tag: *//p' "$SUMS")}

@@ -3,22 +3,23 @@
 # libraries. The cross flavors need their binfmt_misc handler registered, because b2 runs its
 # configure probes -- qemu-user for aarch64, wine for win. `nix develop .#cross` provides both.
 set -e
-FLAVOR=${1:-native}
+FLAVOR=${1:-x86_64-linux-gnu}
 . "$(dirname "$0")/common.sh"
 
 cd "$SRC/boost_1_89_0"
 
-# One toolset name per flavor. b2 keys its object directories off the toolset, so a shared name
-# would have the flavors overwrite each other's objects in this shared source tree.
+# One toolset name per flavor, from common.sh's B2_TAG -- the flavor with its dashes stripped,
+# because b2 splits `toolset=name-version` on the first dash. b2 keys its object directories
+# off the toolset, so a shared name would have the flavors overwrite each other's objects.
 #
 # The zig prefix is load-bearing, not decoration: b2 ships a builtin toolset called clang-win
 # (clang-cl against MSVC), so `using clang : win` loads tools/clang-win.jam and fails demanding
 # clang-cl.exe. Any flavor named after a platform b2 knows would collide the same way.
 cat > "$BUILD/user-config.jam" <<JAM
-using clang : zig$FLAVOR : $HERE/bin/zig-cxx-boost ;
+using clang : zig$B2_TAG : $HERE/bin/zig-cxx-boost ;
 JAM
 
-./b2 --user-config="$BUILD/user-config.jam" toolset=clang-zig$FLAVOR \
+./b2 --user-config="$BUILD/user-config.jam" toolset=clang-zig$B2_TAG \
   link=static runtime-link=shared threading=multi variant=release cxxstd=17 \
   $B2_ARGS --build-dir="$BUILD/boost" \
   --with-program_options --with-filesystem --with-regex --with-thread \

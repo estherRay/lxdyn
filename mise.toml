@@ -6,40 +6,43 @@ cd external/ssc/ssc && sh generate_module_header.sh
 """
 
 # build.zig locates a closure through -Ddeps/$XDYN_DEPS, defaulting to libcxx-<flavor>/; the same
-# variable overrides where these tasks write one. The cross flavors need the native closure first
-# — they borrow its protoc — and are deliberately not declared as depending on it, since that
-# would rebuild it on every invocation.
+# variable overrides where these tasks write one. Every non-host flavor needs x86_64-linux-gnu
+# first — they borrow its protoc — and is deliberately not declared as depending on it, since
+# that would rebuild it on every invocation.
+#
+# One task per target triple, and the triple is the whole name: it is what -Dtarget takes, what
+# build.zig derives libcxx-<triple> from, and what tools/deps/common.sh cases on.
 
-[tasks."deps:native"]
-description = "Build the native libc++ dependency closure into libcxx-native/ (hours)"
-run = "tools/deps/build-all.sh native"
+[tasks."deps:x86_64-linux-gnu"]
+description = "Build the x86_64-linux-gnu closure (glibc 2.28 floor) into libcxx-x86_64-linux-gnu/ (hours)"
+run = "tools/deps/build-all.sh x86_64-linux-gnu"
 
-[tasks."deps:aarch64"]
-description = "Build the aarch64-linux-musl closure into libcxx-aarch64/ (needs deps:native)"
-run = "tools/deps/build-all.sh aarch64"
+[tasks."deps:aarch64-linux-musl"]
+description = "Build the aarch64-linux-musl closure (needs deps:x86_64-linux-gnu)"
+run = "tools/deps/build-all.sh aarch64-linux-musl"
 
-[tasks."deps:win"]
-description = "Build the x86_64-windows-gnu closure into libcxx-win/ (needs deps:native)"
-run = "tools/deps/build-all.sh win"
+[tasks."deps:x86_64-windows-gnu"]
+description = "Build the x86_64-windows-gnu closure (needs deps:x86_64-linux-gnu)"
+run = "tools/deps/build-all.sh x86_64-windows-gnu"
 
 [tasks."deps:fetch"]
-description = "Download a prebuilt closure instead of building it: mise run deps:fetch native"
+description = "Download a prebuilt closure: mise run deps:fetch x86_64-linux-gnu"
 # The bootstrap answer for a fresh clone and for CI: ~30 MB per flavor against hours of
 # build. Hash-verified against tools/deps/assets.sha256, which also names the release tag.
 run = "sh tools/deps/fetch.sh"
 
 [tasks."deps:pack"]
-description = "Pack a built closure into a release asset: mise run deps:pack native"
+description = "Pack a built closure into a release asset: mise run deps:pack x86_64-linux-gnu"
 run = "sh tools/deps/pack.sh"
 
 # -fqemu/-fwine rather than the host's binfmt_misc: where a foreign binary is registered, zig runs
 # it transparently and this lane passes without either emulator being declared anywhere. That is a
 # property of the developer's machine, not of the repository.
-[tasks."cross:aarch64"]
+[tasks."cross:aarch64-linux-musl"]
 description = "Run the unit suite for aarch64-linux-musl under qemu"
 run = "zig build test -Dtarget=aarch64-linux-musl -fqemu"
 
-[tasks."cross:win"]
+[tasks."cross:x86_64-windows-gnu"]
 description = "Run the unit suite for x86_64-windows-gnu under wine"
 run = "zig build test -Dtarget=x86_64-windows-gnu -fwine"
 
@@ -49,8 +52,8 @@ description = "Run both cross suites (needs `nix develop .#cross`)"
 # two full builds at once interleave their output and double the peak disk. CI runs the
 # two granular tasks as separate jobs instead, so each only needs one target's closure.
 run = """
-mise run cross:aarch64
-mise run cross:win
+mise run cross:aarch64-linux-musl
+mise run cross:x86_64-windows-gnu
 """
 
 [tasks.gdb]

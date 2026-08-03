@@ -18,9 +18,9 @@
 # x86_64-linux-*gnu*, so libc and libm stay dynamic. Everything C++ is static, which is the
 # part that removed the .deb, but alpine is musl and these binaries cannot run on it at all.
 #
-# Reaching alpine needs `-Dtarget=x86_64-linux-musl`, and that needs a musl *closure*:
-# resolveDepsRoot maps every non-aarch64, non-Windows target to the glibc libcxx-native, so
-# there is currently nothing to link against. Multi-hour build, tracked, not done here.
+# Reaching alpine needs `-Dtarget=x86_64-linux-musl` and a musl *closure*, and there is not
+# one yet. The resolver now names it `libcxx-x86_64-linux-musl` and says so, rather than
+# silently handing the glibc closure to a musl build. Multi-hour build, tracked, not here.
 #
 # Staying on glibc is fine as long as the binaries are built for a glibc *floor* rather than
 # for whatever the build host has — see `deploy:stage`, which pins 2.28 to match the closure.

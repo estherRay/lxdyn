@@ -5,7 +5,7 @@
 # The abseil/gRPC graph is circular and lld resolves on demand inside a single archive. Getting
 # thirty separate .a files into a working order is the alternative.
 set -e
-FLAVOR=${1:-native}
+FLAVOR=${1:-x86_64-linux-gnu}
 . "$(dirname "$0")/common.sh"
 
 LIB=$DEPS/install/lib

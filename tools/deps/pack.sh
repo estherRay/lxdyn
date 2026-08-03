@@ -8,7 +8,7 @@
 #
 #   libxdyndeps_core.a, libxdyndeps_test.a   what build.zig links
 #   install/include                          what build.zig compiles against
-#   install/bin                              native only -- build.zig runs *this* protoc
+#   install/bin                              the host-matching flavor only -- build.zig runs *this* protoc
 #                                            grpc_cpp_plugin, so a clone that only ever
 #                                            fetched a closure cannot generate its sources
 #                                            without them
@@ -20,7 +20,7 @@
 # of which steps into boost, and it is a ~9x difference on every download. XDYN_PACK_STRIP=0
 # keeps it, for anyone who does want to debug into the closure.
 set -e
-FLAVOR=${1:-native}
+FLAVOR=${1:-x86_64-linux-gnu}
 . "$(dirname "$0")/common.sh"
 
 OUT=${XDYN_PACK_OUT:-$REPO/build/deps-assets}
@@ -35,11 +35,11 @@ STRIP=${XDYN_PACK_STRIP:-1}
 # The floor is what makes a published native asset linkable on Debian 10 / RHEL 8. Checked
 # rather than trusted: the recipes pin it, but a closure built before the pin looks identical
 # from the outside. See common.sh for why __isoc23_* is the tell.
-if [ "$FLAVOR" = native ]; then
+if [ "$FLAVOR" = x86_64-linux-gnu ]; then
     stale=$(llvm-nm --undefined-only "$DEPS/libxdyndeps_core.a" 2>/dev/null | grep -c __isoc23_ || true)
     [ "$stale" -eq 0 ] || {
         echo "pack: $DEPS was built against a glibc newer than the 2.28 floor" >&2
-        echo "      ($stale undefined __isoc23_* symbols; rebuild with 'mise run deps:native')" >&2
+        echo "      ($stale undefined __isoc23_* symbols; rebuild with 'mise run deps:x86_64-linux-gnu')" >&2
         exit 1
     }
 fi
@@ -62,7 +62,7 @@ trap 'rm -rf "$STAGE"' EXIT HUP INT TERM
 mkdir -p "$STAGE/install"
 cp "$DEPS/libxdyndeps_core.a" "$DEPS/libxdyndeps_test.a" "$STAGE/"
 cp -a "$DEPS/install/include" "$STAGE/install/"
-[ "$FLAVOR" = native ] && cp -a "$DEPS/install/bin" "$STAGE/install/"
+[ "$FLAVOR" = x86_64-linux-gnu ] && cp -a "$DEPS/install/bin" "$STAGE/install/"
 
 if [ "$STRIP" != 0 ]; then
     before=$(stat -c %s "$STAGE/libxdyndeps_core.a")

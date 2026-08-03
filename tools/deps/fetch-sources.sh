@@ -2,7 +2,7 @@
 # Fetch every upstream source once into libcxx-src/, shared by all three flavors. yaml-cpp is
 # absent on purpose: it comes from this repo's own external/ submodule, not from upstream.
 set -e
-FLAVOR=${1:-native}
+FLAVOR=${1:-x86_64-linux-gnu}
 . "$(dirname "$0")/common.sh"
 
 clone() {  # $1 = url, $2 = tag, $3 = directory

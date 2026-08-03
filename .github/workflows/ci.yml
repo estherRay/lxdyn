@@ -35,7 +35,7 @@ jobs:
       # ~34 MB against the hours build-all.sh takes. Hash-verified against
       # tools/deps/assets.sha256, which also names the release tag.
       - name: Dependency closure
-        run: nix develop --command mise run deps:fetch native
+        run: nix develop --command mise run deps:fetch x86_64-linux-gnu
       - name: Submodules
         run: nix develop --command mise run setup
 
@@ -64,7 +64,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        target: [aarch64, win]
+        target: [aarch64-linux-musl, x86_64-windows-gnu]
     steps:
       - uses: actions/checkout@v7
       - uses: cachix/install-nix-action@v31
@@ -73,7 +73,7 @@ jobs:
       # build still needs it. See build.zig's -Ddeps-host / $XDYN_DEPS_HOST.
       - name: Dependency closures
         run: |
-          nix develop --command mise run deps:fetch native
+          nix develop --command mise run deps:fetch x86_64-linux-gnu
           nix develop --command mise run deps:fetch ${{ matrix.target }}
       - name: Submodules
         run: nix develop --command mise run setup
@@ -91,7 +91,7 @@ jobs:
       - uses: cachix/install-nix-action@v31
 
       - name: Dependency closure
-        run: nix develop --command mise run deps:fetch native
+        run: nix develop --command mise run deps:fetch x86_64-linux-gnu
       - name: Submodules
         run: nix develop --command mise run setup
 

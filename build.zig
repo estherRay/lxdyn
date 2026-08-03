@@ -16,9 +16,8 @@ const builtin = @import("builtin");
 //
 // Codegen is part of the graph rather than a script to remember to run first —
 // see addCodegen. The libc++ deps live under a per-target closure root —
-// libcxx-native for x86_64, libcxx-aarch64 for -Dtarget=aarch64-*, libcxx-win for
-// -Dtarget=x86_64-windows-gnu — built by tools/deps/ and overridable with
-// -Ddeps=<path> or $XDYN_DEPS (see resolveDepsRoot below). Each closure is merged
+// libcxx-<triple>, e.g. libcxx-x86_64-linux-gnu — built by tools/deps/ and overridable
+// with -Ddeps=<path> or $XDYN_DEPS_<TRIPLE> (see resolveDepsRoot below). Each closure is merged
 // into two archives so lld resolves the absl/gRPC circular graph on-demand within one:
 //   - libxdyndeps_core.a : everything except gtest/gmock
 //   - libxdyndeps_test.a : gtest + gmock + gmock_main
@@ -446,9 +445,9 @@ fn addCodegen(b: *std.Build) Codegen {
     //
     //    The *host* closure, never the target's: protoc and grpc_cpp_plugin run on this
     //    machine whatever -Dtarget says, and the C++ they emit is target-independent.
-    const host = b.option([]const u8, "deps-host", "Native closure providing protoc (default: ./libcxx-native)") orelse
+    const host = b.option([]const u8, "deps-host", "Host closure providing protoc (default: ./libcxx-x86_64-linux-gnu)") orelse
         b.graph.environ_map.get("XDYN_DEPS_HOST") orelse
-        b.pathJoin(&.{ b.build_root.path orelse ".", "libcxx-native" });
+        b.pathJoin(&.{ b.build_root.path orelse ".", "libcxx-x86_64-linux-gnu" });
     const bin = b.pathJoin(&.{ host, "install", "bin" });
     const protoc = b.pathJoin(&.{ bin, "protoc" });
     // Warned, not failed, for the same reason resolveDepsRoot warns: `zig build --help` is
@@ -529,30 +528,46 @@ fn addProtoSources(b: *std.Build, m: *std.Build.Module, names: []const []const u
 // Path resolution — nothing absolute is baked into this file (migration-plan.md A1)
 // =============================================================================
 
-// The bucket-3 libc++ closure (merged archives + install/include) for the target being
-// built. Resolution order:
-//   1. -Ddeps=<path>  explicit; applies to whatever -Dtarget was asked for
-//   2. $XDYN_DEPS     same override, from the environment
-//   3. <build root>/libcxx-{native,aarch64,win}  — where tools/deps/ builds them, gitignored
-// gen.sh reads $XDYN_DEPS_HOST instead: codegen runs *host* protoc/grpc_cpp_plugin and so
-// always wants the native closure, even when cross-compiling.
+// The bucket-3 libc++ closure (merged archives + install/include) for the target being built,
+// named by its **full triple**. Two-thirds of one does not identify a closure: x86_64-linux-gnu
+// and x86_64-linux-musl differ in the libc, which is precisely what a closure carries — and the
+// old arch-only rule handed a musl build the glibc closure and a glibc aarch64 build the musl one.
+// Deriving the directory from the whole triple makes that unrepresentable rather than merely
+// discouraged. Resolution order:
+//   1. -Ddeps=<path>            explicit; applies to whatever -Dtarget was asked for
+//   2. $XDYN_DEPS_<TRIPLE>      per-target, e.g. XDYN_DEPS_X86_64_LINUX_MUSL. This is the one an
+//                               environment should export, and the only one that stays correct
+//                               when a cross build runs in the same shell.
+//   3. $XDYN_DEPS               blunt: one path for every target. Kept as a deliberate override,
+//                               never as something a devShell exports.
+//   4. <build root>/libcxx-<triple>   where tools/deps/ builds them, gitignored
+// addCodegen resolves the *host* closure separately, via -Ddeps-host: codegen runs host protoc.
 fn resolveDepsRoot(b: *std.Build, target: std.Build.ResolvedTarget) []const u8 {
-    const flavor = if (target_is_windows)
-        "libcxx-win"
-    else if (target.result.cpu.arch == .aarch64)
-        "libcxx-aarch64"
-    else
-        "libcxx-native";
+    const t = target.result;
+    // The abi stringifies without its glibc version — `gnu`, not `gnu.2.28` — which is what we
+    // want: exactly one gnu closure exists and tools/deps/common.sh owns its floor.
+    const triple = b.fmt("{s}-{s}-{s}", .{ @tagName(t.cpu.arch), @tagName(t.os.tag), @tagName(t.abi) });
 
-    const root = b.option([]const u8, "deps", "libc++ dependency closure for the target (default: ./libcxx-<flavor>)") orelse
+    const env_key = b.fmt("XDYN_DEPS_{s}", .{triple});
+    for (env_key) |*c| c.* = switch (c.*) {
+        '-' => '_',
+        'a'...'z' => c.* - ('a' - 'A'),
+        else => c.*,
+    };
+
+    const root = b.option([]const u8, "deps", "libc++ dependency closure for the target (default: ./libcxx-<triple>)") orelse
+        b.graph.environ_map.get(env_key) orelse
         b.graph.environ_map.get("XDYN_DEPS") orelse
-        b.pathJoin(&.{ b.build_root.path orelse ".", flavor });
+        b.pathJoin(&.{ b.build_root.path orelse ".", b.fmt("libcxx-{s}", .{triple}) });
 
     // Deliberately a warning, not an error: `zig build --help` has to keep working on a
-    // machine that has no closure yet — that is exactly where -Ddeps gets discovered.
+    // machine that has no closure yet — that is exactly where -Ddeps gets discovered. It can
+    // afford to be a warning precisely because the triple-named default cannot silently
+    // resolve to a closure built for a different libc.
     std.Io.Dir.cwd().access(b.graph.io, b.pathJoin(&.{ root, "libxdyndeps_core.a" }), .{}) catch {
-        std.log.warn("no libxdyndeps_core.a under '{s}': the {s} closure is missing. " ++
-            "Point at it with -Ddeps=<path> or $XDYN_DEPS; the link step will fail otherwise.", .{ root, flavor });
+        std.log.warn("no libxdyndeps_core.a under '{s}': the {s} closure is missing. Fetch it " ++
+            "with `mise run deps:fetch {s}`, build it with `mise run deps:{s}`, or name one " ++
+            "with -Ddeps=<path> or ${s}.", .{ root, triple, triple, triple, env_key });
     };
     return root;
 }

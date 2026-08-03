@@ -5,13 +5,17 @@
 # same URL. These hashes are what identify it, and fetch.sh will not unpack without them.
 #
 # To publish a new set:
-#   1. tools/deps/pack.sh {native,aarch64,win}   -- prints the lines below
+#   1. tools/deps/pack.sh <triple>               -- prints the lines below
 #   2. bump the tag, paste the three lines
 #   3. gh release create <tag> build/deps-assets/lxdyn-deps-*.tar.zst
 #
 # Bump the tag whenever the recipes, the yaml-cpp pin, the zig version or the glibc floor
 # change. Never re-upload under an existing tag: anyone who already fetched it keeps a
 # closure these hashes no longer describe.
+#
+# The three names below predate the rename to full target triples; fetch.sh maps the triple
+# to them. Publish them as lxdyn-deps-<triple>.tar.zst at the next tag bump and delete that
+# mapping. Re-uploading unchanged bytes purely to rename them is not worth a tag.
 #
 # tag: closures-v0
 ee1196d4cf1827ef371f98419cfc6f4ee0853310f3a0a696466f668bb81ec2ef  lxdyn-deps-native.tar.zst

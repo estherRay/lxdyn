@@ -3,7 +3,7 @@
 # compile the same sources. It is also what ties a closure to one clone: change the submodule
 # pin and the closure is stale.
 set -e
-FLAVOR=${1:-native}
+FLAVOR=${1:-x86_64-linux-gnu}
 . "$(dirname "$0")/common.sh"
 
 [ -f "$REPO/external/yaml-cpp/CMakeLists.txt" ] || {

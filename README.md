@@ -75,7 +75,7 @@ a prebuilt one in about 35 MB.
 
 ```bash
 nix develop
-mise run deps:fetch native     # or `mise run deps:native` to build it yourself
+mise run deps:fetch x86_64-linux-gnu   # or `mise run deps:x86_64-linux-gnu` to build it
 mise run setup                 # submodules and the SSC umbrella headers
 ```
 
@@ -91,7 +91,7 @@ on a typical Linux host. Codegen runs as part of the build; there is no configur
 Cross-compiling needs nothing but the matching closure:
 
 ```bash
-mise run deps:fetch aarch64
+mise run deps:fetch aarch64-linux-musl
 zig build -Dtarget=aarch64-linux-musl
 ```
 
