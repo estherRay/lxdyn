@@ -1,4 +1,4 @@
-// xdyn-side libc++ compatibility shim for SSC's SerializeMapsSetsAndVectors.hpp (Hazard D, §4.4/§10).
+// xdyn-side libc++ compatibility shim for SSC's SerializeMapsSetsAndVectors.hpp (Hazard D).
 //
 // SSC keys its std::vector/map/set/pair operator<< off libstdc++-internal include guards
 // (_GLIBCXX_VECTOR/_MAP/_SET/_STL_PAIR_H). Under libc++ those are never defined, so the operators

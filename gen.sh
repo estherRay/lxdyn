@@ -1,5 +1,5 @@
 #!/bin/sh
-# Codegen prerequisite for the build (build-toolchain.md §9.3): produces generated
+# Codegen prerequisite for the build: produces generated
 # sources into the gitignored build/gen/, plus the SSC umbrella headers in-tree via
 # SSC's own script. Run before `zig build`. Idempotent.
 set -e

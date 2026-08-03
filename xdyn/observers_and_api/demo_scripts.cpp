@@ -4,7 +4,7 @@
  * The post-processing scripts, embedded as data.
  *
  * This file replaces tools/embed_demo.py (and, before it, build.zig's
- * DemoGenStep — see build-toolchain.md §9.3). That generator wrote 55 lines of
+ * DemoGenStep). That generator wrote 55 lines of
  * Python to emit one `<<"line"<<std::endl` per source line; everything the
  * emitted code actually did — the two substitutions and the H5 write — happened
  * at *runtime*, so none of it needed generating. `#embed` puts the bytes in

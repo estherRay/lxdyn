@@ -2,7 +2,7 @@ const std = @import("std");
 const builtin = @import("builtin");
 
 // =============================================================================
-// Option-B build: zig cc / libc++ via addCSourceFiles (build-toolchain.md §9.2).
+// Option-B build: zig cc / libc++ via addCSourceFiles.
 //
 // Compiles every TU with Zig's bundled clang+libc++ (cross-ready, header-dep
 // tracking, real -O), builds libxdyn STATIC (Hazard C / V2), force-includes the
@@ -14,7 +14,7 @@ const builtin = @import("builtin");
 // each against its own closure. A missing one warns rather than fails, so
 // `zig build --help` still works on a machine that has none.
 //
-// Codegen is produced by ./gen.sh into build/gen/ (build-toolchain.md §9.3) and
+// Codegen is produced by ./gen.sh into build/gen/ and
 // must be run before `zig build`. The libc++ deps live under a per-target closure
 // root — libcxx-native for x86_64, libcxx-aarch64 for -Dtarget=aarch64-*,
 // libcxx-win for -Dtarget=x86_64-windows-gnu — built by tools/deps/ and
@@ -64,7 +64,7 @@ pub fn build(b: *std.Build) void {
     target_is_windows = target.result.os.tag == .windows;
     deps_root = resolveDepsRoot(b, target);
     eigen_include = resolveEigen(b);
-    // -Ddebug is a *boolean*, deliberately not -Doptimize=Debug (§9.8). OptimizeMode
+    // -Ddebug is a *boolean*, deliberately not -Doptimize=Debug. OptimizeMode
     // .Debug would drop -DNDEBUG, and protobuf declares ~InternalMetadata inline under
     // NDEBUG and out-of-line without it — against a Release-built closure that is a
     // phantom undefined symbol at link time. Keeping .ReleaseFast and appending -O0 -g
@@ -75,19 +75,19 @@ pub fn build(b: *std.Build) void {
 
     installUnderBuildDir(b, target);
     gen_step = addCodegenStep(b);
-    // The SSC libc++ shim (Hazard D/G, §4.4) is xdyn-side source, not a dependency
+    // The SSC libc++ shim (Hazard D/G) is xdyn-side source, not a dependency
     // artifact: it lives in-tree. -include needs a path the compiler can open from
     // whatever cwd zig runs it in, hence pathFromRoot (absolute, computed at runtime).
     const shim_hpp = b.pathFromRoot("xdyn/compat/ssc_serialize_compat.hpp");
     // ReleaseFast => -O3 -DNDEBUG. NDEBUG is mandatory: the libc++ protobuf was
     // built Release, and a debug consumer fails to link on protobuf's phantom
-    // ~InternalMetadata (build-toolchain.md §10). Hardcoded for Test 1.
+    // ~InternalMetadata. Hardcoded for Test 1.
     const optimize: std.builtin.OptimizeMode = .ReleaseFast;
 
     // ---- flag sets (no -O / no -I here: Zig handles -O; includes go on the
     //      module; only scoped extras live in flags) --------------------------
     // cpp_flags force-includes the SSC libc++ shim globally: it restores the
-    // SerializeMapsSetsAndVectors operator<< (Hazard D, §4.4) and a vector<bool>
+    // SerializeMapsSetsAndVectors operator<< (Hazard D) and a vector<bool>
     // coerce overload (Hazard G) that vanish under libc++. The operators are
     // global templates, so force-including everywhere is ODR-safe.
     // -Wno-date-time: h5_version.{c,cpp} embed __DATE__/__TIME__; zig cc treats the
@@ -235,7 +235,7 @@ pub fn build(b: *std.Build) void {
         "XdynForCS.cpp", "XdynForME.cpp",
     }, cpp_flags);
     // demo_scripts.cpp #embeds postprocessing/{MatLab,Python}/* instead of having a
-    // generator emit them as C++ string literals (§9.3, migration-plan A8). #embed is
+    // generator emit them as C++ string literals (migration-plan A8). #embed is
     // C23 and clang takes it in C++ only as an extension, hence the extra -Wno; the
     // embedded files land in the depfile, so the cache invalidates on script edits.
     addCpp(b, xdyn, "xdyn/observers_and_api", &.{"demo_scripts.cpp"}, withFlags(b, cpp_flags, &.{"-Wno-c23-extensions"}));
@@ -411,12 +411,12 @@ fn withFlags(b: *std.Build, base: []const []const u8, extra: []const []const u8)
     return out;
 }
 
-// Codegen is a build prerequisite, not a manual pre-step (§9.3's bootstrap constraint).
+// Codegen is a build prerequisite, not a manual pre-step.
 // Two reasons it has to be wired into the graph: `mise run clean` now wipes build/gen, and
 // editing a .proto used to compile silently against stale gencode.
 //
 // has_side_effects because one of the four generators — SSC's own generate_module_header.sh
-// — writes *into the source tree* (SSC must not be modified, §2.1), which zig cannot model
+// — writes *into the source tree* (SSC must not be modified), which zig cannot model
 // as a cached output. Cheap: gen.sh is idempotent and runs in <1 s, and zig's C cache is
 // content-hashed, so regenerating byte-identical files rebuilds nothing.
 fn addCodegenStep(b: *std.Build) *std.Build.Step {
@@ -564,7 +564,7 @@ fn buildExe(
 }
 
 // =============================================================================
-// Python wrapper — the one mandatory shared object (build-toolchain.md §9.7)
+// Python wrapper — the one mandatory shared object
 // =============================================================================
 
 // What CPython needs to be told about, all of it discovered from one interpreter so the
@@ -580,7 +580,7 @@ const PythonEnv = struct {
 // A *shared* library, unlike everything else here, because `import xdyn` is a dlopen and
 // there is no such thing as a statically linked extension module. That was Hazard L, and
 // the closure turned out to already satisfy it: zig cc defaults to -fPIC, so all 3294
-// members relocate position-independently and no rebuild was needed (§9.7).
+// members relocate position-independently and no rebuild was needed.
 //
 // Opt-in via `zig build python`, not part of `zig build`: it needs an interpreter with
 // pybind11 in it, and a plain `zig build` must keep working on a machine that has neither.
