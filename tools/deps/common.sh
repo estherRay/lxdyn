@@ -108,7 +108,8 @@ if [ -n "$CMAKE_SYSTEM" ]; then
       "$HERE/toolchain.cmake.in" > "$TOOLCHAIN"
   CMAKE_TARGET="-DCMAKE_TOOLCHAIN_FILE=$TOOLCHAIN"
 else
-  CMAKE_TARGET="-DCMAKE_C_COMPILER=$HERE/bin/zig-cc -DCMAKE_CXX_COMPILER=$HERE/bin/zig-cxx"
+  CMAKE_TARGET="-DCMAKE_C_COMPILER=$HERE/bin/zig-cc -DCMAKE_CXX_COMPILER=$HERE/bin/zig-cxx
+    -DCMAKE_AR=$HERE/bin/zig-ar -DCMAKE_RANLIB=$HERE/bin/zig-ranlib"
 fi
 
 # CMAKE_POLICY_VERSION_MINIMUM: CMake 4 refuses the pre-3.5 cmake_minimum_required that
@@ -137,6 +138,17 @@ cmake_build() {  # $1 = source dir, $2 = build subdir name, $3... = extra -D fla
   if [ -f "$BUILD/$cmake_name/CMakeCache.txt" ] && ! grep -qxF \
        "CMAKE_HOME_DIRECTORY:INTERNAL=$cmake_src" "$BUILD/$cmake_name/CMakeCache.txt"; then
     echo "$cmake_name: cached source directory has moved -- reconfiguring from scratch"
+    rm -rf "$BUILD/$cmake_name"
+  fi
+  # CMake records the archiver in CMakeFiles/<ver>/CMakeCXXCompiler.cmake at first compiler
+  # detection and never revisits it, so a tree configured before the archiver was named keeps
+  # the one it found on PATH. -DCMAKE_AR does not dislodge it: it lands as an UNINITIALIZED
+  # cache entry that the normal variable set in that file shadows, which means CMakeCache.txt
+  # reads back zig-ar while rules.ninja still runs the host's. Checking the cache would pass.
+  # Check what ninja executes.
+  if [ -f "$BUILD/$cmake_name/CMakeFiles/rules.ninja" ] && ! grep -qF \
+       "$HERE/bin/zig-ar" "$BUILD/$cmake_name/CMakeFiles/rules.ninja"; then
+    echo "$cmake_name: build tree predates the zig archiver -- reconfiguring from scratch"
     rm -rf "$BUILD/$cmake_name"
   fi
   cmake -S "$cmake_src" -B "$BUILD/$cmake_name" -G Ninja $CMAKE_COMMON "$@"

@@ -16,7 +16,7 @@ cd "$SRC/boost_1_89_0"
 # (clang-cl against MSVC), so `using clang : win` loads tools/clang-win.jam and fails demanding
 # clang-cl.exe. Any flavor named after a platform b2 knows would collide the same way.
 cat > "$BUILD/user-config.jam" <<JAM
-using clang : zig$B2_TAG : $HERE/bin/zig-cxx-boost ;
+using clang : zig$B2_TAG : $HERE/bin/zig-cxx-boost : <archiver>$HERE/bin/zig-ar <ranlib>$HERE/bin/zig-ranlib ;
 JAM
 
 ./b2 --user-config="$BUILD/user-config.jam" toolset=clang-zig$B2_TAG \
