@@ -5,19 +5,22 @@
 # same URL. These hashes are what identify it, and fetch.sh will not unpack without them.
 #
 # To publish a new set:
-#   1. tools/deps/pack.sh <triple>               -- prints the lines below
-#   2. bump the tag, paste the three lines
-#   3. gh release create <tag> build/deps-assets/lxdyn-deps-*.tar.zst
+#   1. nix build .#libcxx-deps-<triple>          -- or tools/deps/build-all.sh <triple>
+#   2. XDYN_DEPS=<result> tools/deps/pack.sh <triple>
+#   3. bump the tag, paste the lines below
+#   4. gh release create <tag> build/deps-assets/lxdyn-deps-*.tar.zst
 #
-# Bump the tag whenever the recipes, the yaml-cpp pin, the zig version or the glibc floor
+# Bump the tag whenever the recipes, the source pins, the zig version or the glibc floor
 # change. Never re-upload under an existing tag: anyone who already fetched it keeps a
 # closure these hashes no longer describe.
 #
-# The three names below predate the rename to full target triples; fetch.sh maps the triple
-# to them. Publish them as lxdyn-deps-<triple>.tar.zst at the next tag bump and delete that
-# mapping. Re-uploading unchanged bytes purely to rename them is not worth a tag.
+# These four came out of `nix build`, so each is the output of a derivation whose inputs are
+# the recipes at this commit, the five sources pinned in flake.lock, and nothing else -- no
+# network, no /usr, no host archiver. The closures-v0 assets predated that and predated the rename
+# to target triples; both are why this is a new tag rather than an upload onto the old one.
 #
-# tag: closures-v0
-ee1196d4cf1827ef371f98419cfc6f4ee0853310f3a0a696466f668bb81ec2ef  lxdyn-deps-native.tar.zst
-a8164b788b7eeb41d9d641a58bd45a0e22fb4a80f4a0ff14e3cdbfd133354d67  lxdyn-deps-aarch64.tar.zst
-d64b83f0f8b3f1402f3887a0c6469406daa217342183ca6596e164f03337e27d  lxdyn-deps-win.tar.zst
+# tag: closures-v1
+734c70594e26c246a776a298ecc3d77d284b678588895759c3a0b81130bbf8c6  lxdyn-deps-x86_64-linux-gnu.tar.zst
+6abf075c4beb317e8ed9b30a75feeb9dc65249ce433e17210e97ba4a46d4dc3e  lxdyn-deps-x86_64-linux-musl.tar.zst
+c5c831faa2cffd84be8391b3bbc498d467597b218e8e23c17ed3bea42335783a  lxdyn-deps-aarch64-linux-musl.tar.zst
+a8c2696016a042f8bc4beccaf51d06ea4bb627fce4196c8b48354a8b6dd4346e  lxdyn-deps-x86_64-windows-gnu.tar.zst

@@ -75,7 +75,13 @@ mkdir -p "$SRC" "$BUILD" "$DEPS/install/lib" "$DEPS/install/include"
 # shell's. `nix develop` alone carries neither cmake nor ninja: C22 deleted the CMake lane and
 # C23 stopped provisioning its tools, and nothing in `zig build` wants them. They live in the
 # .#deps shell, together with the emulators b2's cross configure probes need.
-for tool in cmake ninja zig; do
+#
+# llvm-nm is in the list because build-boost.sh and build-grpc.sh assert on its output, and it
+# was undeclared for as long as these recipes have existed -- every shell that ever ran them
+# happened to carry it. In a sandbox that did not, the omission surfaced five steps in, on the
+# fourth build, and only because gRPC's assertion is written so that it fails when it cannot
+# run. Boost's was not, and passed. A tool an assertion depends on belongs in this list.
+for tool in cmake ninja zig llvm-nm; do
   command -v "$tool" > /dev/null 2>&1 || {
     echo "tools/deps needs '$tool', which this shell does not provide." >&2
     echo "Building a closure needs:  nix develop .#deps" >&2

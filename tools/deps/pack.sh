@@ -35,8 +35,18 @@ STRIP=${XDYN_PACK_STRIP:-1}
 # The floor is what makes a published native asset linkable on Debian 10 / RHEL 8. Checked
 # rather than trusted: the recipes pin it, but a closure built before the pin looks identical
 # from the outside. See common.sh for why __isoc23_* is the tell.
+#
+# The symbol list is captured first and tested second, with no 2>/dev/null and no `|| true`. Read
+# as one pipeline the check cannot fail: a missing llvm-nm, an unreadable archive and a clean one
+# all produce no output, `grep -c` answers 0, and the gate opens. build-boost.sh carried the same
+# construction and passed in a sandbox with no llvm in it -- Hazard R, an assertion that cannot
+# run reporting success. This one guards what gets published.
 if [ "$FLAVOR" = x86_64-linux-gnu ]; then
-    stale=$(llvm-nm --undefined-only "$DEPS/libxdyndeps_core.a" 2>/dev/null | grep -c __isoc23_ || true)
+    syms=$(llvm-nm --undefined-only "$DEPS/libxdyndeps_core.a") || {
+        echo "pack: cannot read $DEPS/libxdyndeps_core.a to check its glibc floor" >&2
+        exit 1
+    }
+    stale=$(printf '%s\n' "$syms" | grep -c __isoc23_ || true)
     [ "$stale" -eq 0 ] || {
         echo "pack: $DEPS was built against a glibc newer than the 2.28 floor" >&2
         echo "      ($stale undefined __isoc23_* symbols; rebuild with 'mise run deps:x86_64-linux-gnu')" >&2
@@ -63,6 +73,11 @@ mkdir -p "$STAGE/install"
 cp "$DEPS/libxdyndeps_core.a" "$DEPS/libxdyndeps_test.a" "$STAGE/"
 cp -a "$DEPS/install/include" "$STAGE/install/"
 [ "$FLAVOR" = x86_64-linux-gnu ] && cp -a "$DEPS/install/bin" "$STAGE/install/"
+
+# $DEPS is a /nix/store path whenever the closure came from `nix build`, and everything under one
+# is read-only. -a preserves that, after which the stripper cannot write and even the exit trap
+# cannot clean up. Making the *copy* writable is the point -- the original stays untouched.
+chmod -R u+w "$STAGE"
 
 if [ "$STRIP" != 0 ]; then
     before=$(stat -c %s "$STAGE/libxdyndeps_core.a")

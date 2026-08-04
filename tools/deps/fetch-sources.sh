@@ -39,6 +39,8 @@ clone https://github.com/HDFGroup/hdf5 hdf5_1.14.6 hdf5
 # clones, so a b2 tied to one machine's glibc would be a trap (see Hazard T).
 [ -x "$SRC/boost_1_89_0/b2" ] || (
   cd "$SRC/boost_1_89_0/tools/build/src/engine"
-  ./build.sh clang --cxx="zig c++ -target $(uname -m)-linux-musl" > /dev/null
+  # Through `sh`, not ./build.sh: its shebang is `#!/usr/bin/env sh`, and a build sandbox
+  # has no /usr/bin/env -- the failure is "not found" for a script that plainly exists.
+  sh ./build.sh clang --cxx="zig c++ -target $(uname -m)-linux-musl" > /dev/null
   cp b2 "$SRC/boost_1_89_0/b2"
 )

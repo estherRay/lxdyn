@@ -15,24 +15,10 @@ FLAVOR=${1:-x86_64-linux-gnu}
 HERE=$(cd "$(dirname "$0")" && pwd)
 REPO=$(cd "$HERE/../.." && pwd)
 
-# The published assets still carry the pre-rename names. Renaming a closure's *directory*
-# does not change its bytes, and the rule in assets.sha256 is that a new name means a new tag
-# and a re-upload -- not worth spending on a rename. The next tag bump, whenever a recipe or
-# the zig version or the floor actually changes, publishes them under the triple and this
-# table goes away. x86_64-linux-musl has no published asset at all yet.
-case $FLAVOR in
-    x86_64-linux-gnu)    ASSET=lxdyn-deps-native.tar.zst ;;
-    aarch64-linux-musl)  ASSET=lxdyn-deps-aarch64.tar.zst ;;
-    x86_64-windows-gnu)  ASSET=lxdyn-deps-win.tar.zst ;;
-    x86_64-linux-musl)
-        echo "fetch: no published asset for $FLAVOR yet -- build it with" >&2
-        echo "       mise run deps:x86_64-linux-musl" >&2
-        exit 1 ;;
-    *)
-        echo "fetch: unknown flavor '$FLAVOR' -- expected one of:" >&2
-        echo "  x86_64-linux-gnu  aarch64-linux-musl  x86_64-windows-gnu" >&2
-        exit 1 ;;
-esac
+# An asset is named for its triple, so there is no table to keep in step with the flavor list.
+# assets.sha256 is the one place that decides what exists: an unpublished flavor has no line
+# there and the check below says so by name.
+ASSET=lxdyn-deps-$FLAVOR.tar.zst
 
 SUMS=$HERE/assets.sha256
 
