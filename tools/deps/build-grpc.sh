@@ -5,6 +5,16 @@ set -e
 FLAVOR=${1:-x86_64-linux-gnu}
 . "$(dirname "$0")/common.sh"
 
+# The only step that needs the host tools: gRPC generates C++ from its own .proto files during
+# its build and has to *run* protoc to do it. common.sh puts them on PATH; the check belongs here
+# rather than there, because fetch-sources.sh and build-host-tools.sh both source common.sh
+# before these exist -- the second one in order to produce them.
+[ -x "$NATIVE_BIN/protoc" ] || {
+  echo "$FLAVOR needs the host tools first: no protoc under $NATIVE_BIN" >&2
+  echo "run 'tools/deps/build-host-tools.sh'" >&2
+  exit 1
+}
+
 # CMAKE_DISABLE_FIND_PACKAGE_systemd: gRPC picks up a host libsystemd if one is installed, and
 # every binary in the closure then needs it at link time.
 # The plugin toggles: xdyn generates C++ only, and the other six languages' plugins are a

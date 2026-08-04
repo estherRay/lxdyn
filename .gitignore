@@ -81,3 +81,7 @@ __pycache__
 # uv's default project environment. The mise tasks all set UV_PROJECT_ENVIRONMENT into build/,
 # but a bare `uv sync` in the repo root drops a venv here; pyproject.toml and uv.lock are tracked.
 /.venv/
+
+# build-host-tools.sh's output on the standalone path: protoc and grpc_cpp_plugin for this
+# machine. An artifact, like the closures themselves -- under Nix it is a store path instead.
+/host-tools/

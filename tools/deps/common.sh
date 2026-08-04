@@ -20,6 +20,7 @@ case $FLAVOR in
   x86_64-linux-gnu)
     ZIG_TARGET=x86_64-linux-gnu.2.28
     B2_ARGS="architecture=x86 address-model=64"
+    CMAKE_SYSTEM=Linux CMAKE_PROCESSOR=x86_64
     ;;
   x86_64-linux-musl)
     ZIG_TARGET=x86_64-linux-musl
@@ -38,6 +39,15 @@ case $FLAVOR in
     # boringssl's Windows assembly is NASM syntax and would need a nasm on the host. The
     # pure-C fallback costs nothing for xdyn's localhost gRPC.
     GRPC_EXTRA=-DOPENSSL_NO_ASM=ON
+    ;;
+  host-tools)
+    # Not a closure flavor: the protoc and grpc_cpp_plugin the *build machine* runs. musl so they
+    # come out static and need no interpreter; `uname -m` so nothing here is x86_64-only.
+    #
+    # No CMAKE_SYSTEM on purpose, and this is the bootstrap: naming one turns CMAKE_CROSSCOMPILING
+    # on, whereupon gRPC hunts for a host protoc instead of building one -- which is exactly what
+    # this step exists to produce.
+    ZIG_TARGET=$(uname -m)-linux-musl
     ;;
   *)
     echo "unknown flavor '$FLAVOR' -- expected one of:" >&2
@@ -76,19 +86,23 @@ done
 # cmake and b2 both exec these by name.
 PATH=$HERE/bin:$PATH
 
-# gRPC find_program()s a HOST protoc and grpc_cpp_plugin for its own build-time codegen. The
-# native closure's must win: it is built from the same v1.78.1 tree, so its gencode matches.
-# A system protoc fails the version assertion the generated sources carry.
-if [ "$FLAVOR" != x86_64-linux-gnu ]; then
-  # $XDYN_DEPS_HOST names the *host* closure, the same variable build.zig reads for codegen.
-  # A derivation cannot use the in-repo default -- its host closure is a store path -- so the
-  # coupling has to be nameable rather than hardcoded.
-  NATIVE_BIN=${XDYN_DEPS_HOST:-$REPO/libcxx-x86_64-linux-gnu}/install/bin
-  [ -x "$NATIVE_BIN/protoc" ] || {
-    echo "$FLAVOR needs the native closure first: no protoc under $NATIVE_BIN" >&2
-    echo "run 'mise run deps:x86_64-linux-gnu'" >&2
-    exit 1
-  }
+# gRPC find_program()s a HOST protoc and grpc_cpp_plugin for its own build-time codegen, and
+# they must come from the same v1.78.1 tree so the gencode matches the libprotobuf it is compiled
+# against -- a system protoc fails the version assertion the generated sources carry.
+#
+# Keyed on CMAKE_SYSTEM rather than on the flavor name: a host protoc is wanted exactly when CMake
+# believes it is cross-compiling, which is the condition that makes gRPC go looking for one. Every
+# flavor now sets CMAKE_SYSTEM, so every flavor takes this branch; only build-host-tools.sh, which
+# produces what is read here, does not.
+if [ -n "$CMAKE_SYSTEM" ]; then
+  # $XDYN_DEPS_HOST names the host tools, built by build-host-tools.sh. It used to name the native
+  # *closure*, which made that closure a build dependency of the other three and assumed an x86_64
+  # glibc build host; the host tools are static and per-machine, so it no longer does either.
+  NATIVE_BIN=${XDYN_DEPS_HOST:-$REPO/host-tools}/install/bin
+  # Prepended, never asserted here. Two callers source this file before the tools exist --
+  # fetch-sources.sh, which does not need them, and build-host-tools.sh, which exists to create
+  # them -- so an assertion at this point fails the bootstrap on its way to bootstrapping.
+  # build-grpc.sh is the only step that needs them, and checks there.
   PATH=$NATIVE_BIN:$PATH
 fi
 export PATH
@@ -99,8 +113,14 @@ export PATH
 # A closure may not discover anything through the shell that happens to be running it.
 unset CMAKE_PREFIX_PATH CMAKE_PROGRAM_PATH CMAKE_INCLUDE_PATH CMAKE_LIBRARY_PATH CMAKE_FRAMEWORK_PATH
 
-# The host-matching flavor deliberately gets no toolchain file. Setting CMAKE_SYSTEM_NAME turns CMAKE_CROSSCOMPILING
-# on even when it names the host, and gRPC then hunts for a host protoc instead of building one.
+# Every closure flavor takes the toolchain file, including the host-matching one. Setting
+# CMAKE_SYSTEM_NAME turns CMAKE_CROSSCOMPILING on even when it names the host, whereupon gRPC hunts
+# for a host protoc instead of building one -- which is now what we want, because the one it would
+# have built is dynamically linked and cannot run in a build sandbox that has no /lib64. The cost
+# is that CMake will not run its try_run probes: measured, HDF5 stops defining H5_HAVE__FLOAT16 and
+# H5_LDOUBLE_TO_FLOAT16_CORRECT, matching the other three flavors, and xdyn uses neither.
+#
+# build-host-tools.sh is the one caller that sets no CMAKE_SYSTEM, and must not: it is the bootstrap.
 if [ -n "$CMAKE_SYSTEM" ]; then
   TOOLCHAIN=$BUILD/toolchain.cmake
   sed -e "s|@SYSTEM@|$CMAKE_SYSTEM|" -e "s|@PROCESSOR@|$CMAKE_PROCESSOR|" \
