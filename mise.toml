@@ -130,64 +130,68 @@ make -C integration_tests/json_tests
 """
 
 [tasks."deploy:stage"]
-description = "Build for the deploy glibc floor and stage stripped binaries into build/deploy/"
-# DEPLOY_GLIBC is not tuning, it is the difference between an image that runs and one that
-# does not. A default `zig build` targets the *host's* glibc: on this box that emits
-# remainder@GLIBC_2.43, and the image then dies at startup with "version `GLIBC_2.43' not
-# found" on anything shipping less -- including Debian trixie, which is as new as base images
-# get. Pinning the version in the target triple is the same mechanism manylinux wheels use.
+description = "Build the static musl binaries and stage them stripped into build/deploy/"
+# The target is not tuning, it is what makes `FROM scratch` possible. x86_64-linux-musl links
+# libc statically, on top of the libc++ and third-party libraries that were already static, so
+# the staged binaries need no loader and no base image underneath them. A default `zig build`
+# does the opposite: it targets the *host's* glibc, which on this box emits
+# remainder@GLIBC_2.43 and dies at startup with "version `GLIBC_2.43' not found" on anything
+# shipping less -- including Debian trixie, which is as new as base images get.
 #
-# 2.28 is the FLOOR, and it is set by the closure rather than by xdyn: tools/deps/common.sh
-# builds every dependency at that floor, so raising it here buys nothing and lowering it
-# means rebuilding the closure. Keep the two numbers equal.
+# The explicit -Dtarget is doing a second job, and it is why the image works at all. A
+# target-less build inside `nix develop` bakes /nix/store/...-glibc-2.42/lib/ld-linux-x86-64.so.2
+# in as PT_INTERP, which runs on that machine and nowhere else -- there is no /nix/store in a
+# container. A static musl build has no PT_INTERP at all, so there is nothing left to get
+# wrong. Never stage a target-less build.
 #
-# The explicit -Dtarget is doing two jobs, and the second one is why the image works at all.
-# It pins the glibc floor, obviously. It also makes zig emit the *standard* interpreter path:
-# a target-less build inside `nix develop` bakes /nix/store/...-glibc-2.42/lib/ld-linux-x86-64.so.2
-# as PT_INTERP, which runs on that machine and nowhere else -- there is no /nix/store in a
-# container. Naming a target switches zig to /lib64/ld-linux-x86-64.so.2. Never stage a
-# target-less build.
+# This needs libcxx-x86_64-linux-musl rather than the native closure: `mise run deps:fetch
+# x86_64-linux-musl` if it is not there, and build.zig finds it by name.
 #
-# --prefix on purpose: build.zig names its install trees <arch>-<os>-<abi>, which does NOT
-# include the glibc version, so this build and the native one would otherwise both land in
-# build/x86_64-linux-gnu/ and silently overwrite each other.
+# --prefix on purpose: build.zig names its install trees <arch>-<os>-<abi>, so without it this
+# task would share build/x86_64-linux-musl/ with a plain `zig build -Dtarget=x86_64-linux-musl`
+# and the image could ship binaries that some other lane left behind.
 #
-# llvm-strip and llvm-nm, never the binutils ones, and no fallback -- Hazard R. A strip built
-# for one architecture no-ops on anything else and still exits 0, so a fallback does not
+# llvm-strip and llvm-readelf, never the binutils ones, and no fallback -- Hazard R. A strip
+# built for one architecture no-ops on anything else and still exits 0, so a fallback does not
 # degrade gracefully, it ships an unstripped image while reporting success. The devShell
-# deliberately carries no binutils at all, so a bare `nm` here would be the host's.
+# deliberately carries no binutils at all, so a bare `readelf` here would be the host's.
 #
 # Six binaries, not all thirteen. run_all_tests, test_hs, yml2test and friends are development
 # tools; shipping them would triple the image to no one's benefit. The two generators earn
 # their place because they are how a user gets the tutorials that used to live in /usr/demos.
+#
+# zig:build is ordering, not output -- nothing below reads build/<triple>/bin. It is what stops
+# mise running this `zig build` concurrently with zig:build's, which deploy:test would
+# otherwise do, and two concurrent `zig build`s corrupt each other's *source tree*: build.zig's
+# first codegen step regenerates SSC's umbrella headers in place (has_side_effects, see
+# addCodegen), and idempotent is not atomic. The other build's compile jobs then read
+# ssc/websocket.hpp mid-rewrite and fail with "unknown type name 'Le'" -- SSC's French licence
+# comment parsed as code, because the opening `/*` had not been written back yet. A warm cache
+# hides this, which is why staging a target that was already built never tripped over it.
+depends = ["zig:build"]
 run = '''
 set -e
-DEPLOY_GLIBC=${DEPLOY_GLIBC:-2.28}
-for t in llvm-strip llvm-nm; do
+for t in llvm-strip llvm-readelf; do
     command -v $t > /dev/null 2>&1 || { echo "deploy:stage needs $t (pkgs.llvm)" >&2; exit 1; }
 done
-zig build -Dtarget=x86_64-linux-gnu.$DEPLOY_GLIBC --prefix build/deploy-build
+zig build -Dtarget=x86_64-linux-musl --prefix build/deploy-build
 rm -rf build/deploy
 mkdir -p build/deploy
+# The assertion this task exists to make, restated for a base image that contains nothing: not
+# "which glibc does this need" but "does this need anything at all". A PT_INTERP or a single
+# NEEDED entry is an image that builds and then cannot exec its own entrypoint, which is the
+# expensive way to find out. Every staged binary is checked, where the glibc floor check only
+# ever looked at xdyn.
 for b in xdyn xdyn-for-cs xdyn-for-me gz generate_yaml_example generate_stl_examples; do
     cp "build/deploy-build/bin/$b" build/deploy/
     llvm-strip --strip-debug "build/deploy/$b"
+    if llvm-readelf -l -d "build/deploy/$b" | grep -qE 'INTERP|NEEDED'; then
+        echo "refusing to stage: $b is dynamically linked, and FROM scratch has no loader" >&2
+        llvm-readelf -l -d "build/deploy/$b" | grep -E 'INTERP|NEEDED' >&2
+        exit 1
+    fi
 done
-# The assertion this task exists to make. Anything above $DEPLOY_GLIBC is an image that builds
-# and then dies at startup on the target, which is the expensive way to find out. `sort -V`,
-# because 2.28 sorts below 2.2.5 in every other collation.
-#
-# The floor is folded into the list before sorting, so requiring *less* than it is fine and
-# only exceeding it fails. Checking `= floor` instead would reject a binary that got more
-# portable.
-REQUIRED=$(llvm-nm -D --undefined-only build/deploy/xdyn | grep -oE 'GLIBC_[0-9.]+' | sed 's/^GLIBC_//')
-MAX=$(printf '%s\n%s\n' "$REQUIRED" "$DEPLOY_GLIBC" | sort -V | tail -1)
-echo "max glibc required: $(printf '%s\n' "$REQUIRED" | sort -V | tail -1) (floor: $DEPLOY_GLIBC)"
-[ "$MAX" = "$DEPLOY_GLIBC" ] || {
-    echo "refusing to stage: needs GLIBC_$MAX, above the pinned floor $DEPLOY_GLIBC" >&2
-    echo "the closure and DEPLOY_GLIBC have drifted apart -- see tools/deps/common.sh" >&2
-    exit 1
-}
+echo "six static binaries: no interpreter, no NEEDED entries"
 du -sh build/deploy
 '''
 
