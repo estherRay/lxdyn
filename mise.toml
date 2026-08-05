@@ -286,7 +286,8 @@ PYTHONPATH="$SO_DIR" ../venv-wrapper/bin/python -m pytest ../../xdyn_wrapper_pyt
 description = "Build and test the wrapper against each supported Python (3.10, 3.13, 3.15)"
 # What the retired Dockerfile_deb11_py3yz_{pybind,test} pair covered as Python x distro. The
 # distro axis is gone: zig targets a glibc floor and links libc++ statically, so only the
-# interpreter varies. numpy<2 has no wheel past 3.12, so the first sync per version builds it.
+# interpreter varies. Every version resolves a numpy that ships wheels for it, so no sync here
+# compiles numpy from source any more -- which is what the retired numpy<2 pin forced past 3.12.
 run = '''
 set -e
 for V in ${XDYN_PYTHON_VERSIONS:-3.10 3.13 3.15}; do
@@ -334,13 +335,42 @@ for s in llvm-strip strip; do
     if command -v "$s" > /dev/null 2>&1; then "$s" --strip-debug "$DEST" && break; fi
     [ "$s" = strip ] && echo "warning: no llvm-strip/strip on PATH -- shipping unstripped"
 done
-GIT_VERSION=$(git describe --abbrev=0 --tag --always | cut -f2 -dv) "$PY" setup.py --quiet bdist_wheel
+# The platform tag, and it is an assertion rather than a label. setuptools defaults to
+# `linux_x86_64`, which PyPI REFUSES on upload -- a Linux wheel must claim a manylinux
+# baseline. 2_28 is not a guess: it is the closure's glibc floor from tools/deps/common.sh,
+# and a8d2460a pins the native build to the same floor, so the module genuinely runs on
+# anything from Debian 10 / RHEL 8 up. Checked below rather than trusted, exactly like
+# deploy:stage does for the image, because mislabelling here fails at a user's `import`.
+GLIBC_FLOOR=2.28
+REQUIRED=$(llvm-nm -D --undefined-only "$DEST" | grep -oE 'GLIBC_[0-9.]+' | sed 's/^GLIBC_//')
+MAX=$(printf '%s\n%s\n' "$REQUIRED" "$GLIBC_FLOOR" | sort -V | tail -1)
+[ "$MAX" = "$GLIBC_FLOOR" ] || {
+    echo "refusing to tag manylinux_${GLIBC_FLOOR%.*}_${GLIBC_FLOOR#*.}: needs GLIBC_$MAX" >&2
+    exit 1
+}
+# No RPATH/RUNPATH either: one pointing into /nix/store would load here and nowhere else.
+if llvm-readelf -d "$DEST" | grep -qiE 'rpath|runpath'; then
+    echo "refusing to package: the module carries an RPATH/RUNPATH" >&2
+    llvm-readelf -d "$DEST" | grep -iE 'rpath|runpath' >&2
+    exit 1
+fi
+echo "manylinux_2_28: max glibc required is $(printf '%s\n' "$REQUIRED" | sort -V | tail -1), no RPATH"
+# dist/ is emptied first because the clean-room check below installs `dist/*.whl`, and that
+# glob is only unambiguous when one wheel is there. Renaming the distribution or changing the
+# platform tag otherwise leaves the previous name behind and uv fails with "conflicting URLs
+# for package" -- pointing at two wheels that are both this task's output.
+rm -rf dist
+GIT_VERSION=$(git describe --abbrev=0 --tag --always | cut -f2 -dv) "$PY" setup.py --quiet \
+    bdist_wheel --plat-name "manylinux_2_28_$(uname -m)"
 ls -la dist/*.whl
 cd ..
 # The wheel is the deliverable, so check the deliverable: a venv with numpy and a test runner and
 # nothing else -- no pybind11, no source tree on sys.path -- must import it and pass all 285.
-# --no-deps because the wheel declares none; any it grows should fail here loudly rather than be
-# resolved from PyPI behind the check's back.
+# --no-deps is now doing the opposite job it used to. It was here because the wheel declared no
+# dependencies at all; the wheel declares numpy, and refusing to resolve dependencies is what
+# turns that declaration into an assertion -- the wheelcheck group supplies numpy and nothing
+# else, so a dependency the wheel grows but does not declare fails here rather than being
+# silently pulled from PyPI behind the check's back.
 UV_PROJECT_ENVIRONMENT=build/venv-wheelcheck uv sync --only-group wheelcheck --quiet
 uv pip install --python build/venv-wheelcheck/bin/python --quiet --reinstall --no-deps \
     xdyn_wrapper_python/dist/*.whl

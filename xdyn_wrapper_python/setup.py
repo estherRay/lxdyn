@@ -1,4 +1,3 @@
-# This setup.py creates a wheel file from the Python XDyn library built with CMake
 import os
 import re
 
@@ -6,14 +5,15 @@ from setuptools import Extension, setup
 from setuptools.command.build_ext import build_ext
 
 
-class CMakeExtension(Extension):
-    def __init__(self, name, sourcedir=""):
-        Extension.__init__(self, name, sources=[])
-        self.sourcedir = os.path.abspath(sourcedir)
+class PrebuiltExtension(Extension):
+    """An extension with no sources: zig produced the .so before setuptools was invoked."""
+
+    def __init__(self, name):
+        super().__init__(name, sources=[])
 
 
-class CMakeBuild(build_ext):
-    pass
+class UsePrebuilt(build_ext):
+    """Deliberately a no-op, so build_ext finds the copied .so instead of compiling."""
 
 
 version = os.environ.get("GIT_VERSION", "0.0.0")
@@ -24,15 +24,8 @@ if not re.match(r"[0-9]+\.[0-9]+\.*[0-9]*", version):
 
 
 setup(
-    name="xdyn",
     version=version,
-    author="Sirehna",
-    author_email="sirehna@sirehna.com",
-    description="A Python wrapper for XDyn",
-    long_description="",
-    ext_modules=[CMakeExtension("xdyn")],
-    cmdclass={"build_ext": CMakeBuild},
+    ext_modules=[PrebuiltExtension("xdyn")],
+    cmdclass={"build_ext": UsePrebuilt},
     zip_safe=False,
-    extras_require={"test": ["pytest>=6.0"]},
-    python_requires=">=3.6",
 )
