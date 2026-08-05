@@ -1,7 +1,23 @@
 [tasks.setup]
 description = "Submodules and the SSC umbrella headers"
+# SSC's own .gitmodules is upstream's file and still relative: its seven children are
+# ../../ThirdParty/x.git, resolved against whatever remote SSC itself was cloned from. From
+# GitLab that is gitlab.com/sirehna_naval_group/ThirdParty/x; from our GitHub fork it becomes
+# github.com/ThirdParty/x, which does not exist, and a recursive init dies with "could not read
+# Username for 'https://github.com'". Pinning the URL here is the same stopgap the top level
+# used to need; fixing it properly means a commit on the SSC fork.
+#
+# Only f2c is pinned, and this deliberately does NOT recurse, because f2c is the only one of the
+# seven that anything uses: build.zig compiles external/ssc/ssc/f2c and puts it on the include
+# path, while eigen, gcovr, geographiclib, google-test, websocketpp and yaml-cpp are SSC's own
+# standalone-build dependencies that nothing here includes. websocketpp is the one worth naming
+# twice -- SSC's headers do include <websocketpp/...>, but that resolves through
+# -Iexternal/websocketpp, xdyn's own patched GitHub submodule, never SSC's copy. So a recursive
+# init was cloning six repositories to ignore all six.
 run = """
-git submodule update --init --recursive
+git submodule update --init
+git -C external/ssc config submodule.ssc/f2c.url https://gitlab.com/sirehna_naval_group/ThirdParty/f2c.git
+git -C external/ssc submodule update --init ssc/f2c
 cd external/ssc/ssc && sh generate_module_header.sh
 """
 

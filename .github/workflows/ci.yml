@@ -26,9 +26,10 @@ jobs:
   native:
     runs-on: ubuntu-latest
     steps:
-      # Deliberately NOT submodules: recursive. .gitmodules resolves ssc and interfaces
-      # relative to this clone's remote, which here is the GitHub fork, where neither
-      # exists. `mise run setup` pins the absolute URLs; see its comment.
+      # Deliberately NOT submodules: recursive, though it would now work -- .gitmodules names
+      # all three absolutely. `mise run setup` still has to run for SSC's umbrella headers, and
+      # it inits the submodules on the way, so asking checkout to do it as well is a second
+      # clone of ssc for nothing.
       - uses: actions/checkout@v7
       - uses: cachix/install-nix-action@v31
 
