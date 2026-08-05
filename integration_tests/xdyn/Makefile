@@ -1,12 +1,13 @@
 .PHONY: all clean demos \
 	invalid_yaml_returns_non_zero_error_code \
-	tutorial_12 \
+	tutorial_06 tutorial_12 \
 	extra_hdf5_output_when_required \
 	no_extra_hdf5_output_when_not_required \
 	issue_196 issue_199 issue_202 issue_39 issue_235 \
 	test_output_size
 
 all: invalid_yaml_returns_non_zero_error_code \
+	 tutorial_06\
 	 tutorial_12\
 	 extra_hdf5_output_when_required\
 	 no_extra_hdf5_output_when_not_required\
@@ -85,6 +86,24 @@ include Makefile.binary_stl
 include Makefile.issue_202
 include Makefile.issue_39
 include Makefile.issue_235
+
+# The one assertion the French manual's build made that nothing else here covers. Its
+# Makefile ran this exact command through the doc image and failed on any "Warning" in the
+# output; deleting docs/user_fr/ deletes that lane, so the check moves rather than dies.
+#
+# It is worth moving because tutorial_06 is the only CLI propulsion-with-commands path under
+# test: a wageningen B-series propeller, a resistance curve and a `commands` section. The
+# gRPC suite covers a controller, and the rest of this directory is issue regressions.
+#
+# Grepping for "Warning" is a usable assertion only because xdyn is otherwise completely
+# silent on this input -- exit 0, nothing on stdout, nothing on stderr. Both streams are
+# captured, where the original watched stdout alone.
+tutorial_06: demos
+	@echo "Running the propulsion tutorial, failing on any warning..."
+	@cd $(WORK) && $(XDYN) tutorial_06_propulsion.yml --dt 0.1 --tend 1 > propulsion.log 2>&1
+	@cd $(WORK) && if grep -q "Warning" propulsion.log; then \
+	    echo "xdyn warned while running the propulsion tutorial:" && cat propulsion.log && exit 1; \
+	else echo "Propulsion tutorial ran with no warnings!"; fi
 
 tutorial_12: demos
 	@echo "Launching tutorial 12..."

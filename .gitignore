@@ -34,10 +34,10 @@ ssc_windows
 # which is the repo root.
 #
 # ROOT-ANCHORED ON PURPOSE. Bare **.png / **.pptx / **.h5 also match the tracked
-# reference datasets under validation/ and integration_tests/ and the documentation
-# assets under docs/. Git keeps those because they are already tracked, but any new
-# sibling would silently vanish from `git status` -- which is how a reference dataset
-# gets lost without anyone noticing.
+# reference datasets under validation/ and integration_tests/. Git keeps those because
+# they are already tracked, but any new sibling would silently vanish from `git status`
+# -- which is how a reference dataset gets lost without anyone noticing. The docs/ image
+# and .pptx assets this also protected are gone; validation/ alone still earns the rule.
 /*.hdb
 /*.HDB
 /*.h5

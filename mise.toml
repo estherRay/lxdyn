@@ -385,14 +385,15 @@ echo "OK -> $OUT/html/index.html"
 
 [tasks."doc:cpp"]
 description = "Build the C++ API reference with Doxygen -> build/doxygen/html/"
-# docs/Doxyfile is a plain Doxyfile now, not a @VAR@ template substituted by CMake. Every
+# doxygen/Doxyfile is a plain Doxyfile now, not a @VAR@ template substituted by CMake. Every
 # path in it is relative, and doxygen resolves those against the *working directory* rather
 # than against the Doxyfile's own location -- which is why this runs from the repository
-# root and does not cd anywhere.
+# root and does not cd anywhere, and why the two paths the Doxyfile names internally
+# (LAYOUT_FILE, INPUT) read doxygen/... rather than being relative to the file itself.
 run = '''
 set -e
 mkdir -p build/doxygen
-doxygen docs/Doxyfile
+doxygen doxygen/Doxyfile
 echo "OK -> $PWD/build/doxygen/html/index.html"
 '''
 
