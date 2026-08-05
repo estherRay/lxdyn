@@ -6,4 +6,4 @@ cosim:
 	@sh cosim/run.sh
 
 clean:
-	@rm -rf ../../build/integration-tests/json_cosim
+	@rm -rf ../../build/scratch/integration-tests/json_cosim

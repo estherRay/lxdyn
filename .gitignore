@@ -1,87 +1,16 @@
-# Build trees. build.zig writes everything under build/<target>; the suffixed names below
-# belonged to the CMake and docker lanes and are kept only so a tree left behind by a
-# pre-C22 checkout does not show up in `git status`.
 build
 install
-build*32
-build*64
-build_deb*
-build_ubuntu*
-build_win*
-build_doc
-build_native
-install_native
-install*32
-install*64
-Debug
-debug
-gcc
-clang
-ssc_debian
-ssc_windows
 .zig-cache/
-*.o
 
-# The libc++ dependency closures built by tools/deps/, and the upstream sources they share
-# (libcxx-src/). Multi-GB: the recipes are committed, the result is not. Deliberately not under
-# build/ -- a clean must not discard a build measured in hours.
-#
-# No trailing slash: a closure shared between clones is reached by a symlink, and git matches
-# a symlink as a file however directory-like it looks.
+*.o
+*.obj
+
 /libcxx-*
 
-# Test droppings: run_all_tests and the tutorials write these into their cwd,
-# which is the repo root.
-#
-# ROOT-ANCHORED ON PURPOSE. Bare **.png / **.pptx / **.h5 also match the tracked
-# reference datasets under validation/ and integration_tests/. Git keeps those because
-# they are already tracked, but any new sibling would silently vanish from `git status`
-# -- which is how a reference dataset gets lost without anyone noticing. The docs/ image
-# and .pptx assets this also protected are gone; validation/ alone still earns the rule.
-/*.hdb
-/*.HDB
-/*.h5
-/*.hdf5
-/*.stl
-/*.csv
-/*.json
-/*.ini
-/*.png
-/*.pptx
 /*.log
 
-# Generated documentation. Still blanket-matched: the pandoc/pweave lane writes next
-# to its sources rather than into an output directory, so there is nothing to anchor to.
-**.pdf
-**.html
-**.docx
-**.emf
-**.jpg
-**.jpeg
-**.bin
-
-# Packaging
-ssc.deb
-xdyn.deb
-*.tar.gz
-*.tgz
-*.bz2
-
-# Editors, IDEs, tooling
-.cproject
-.pydevproject
-.metadata
-.project
-.settings
-.vagrant
 *.swp
 __pycache__
-.wine
-
-# uv's default project environment. The mise tasks all set UV_PROJECT_ENVIRONMENT into build/,
-# but a bare `uv sync` in the repo root drops a venv here; pyproject.toml and uv.lock are tracked.
 /.venv/
 
-# build-host-tools.sh's output on the standalone path: protoc and grpc_cpp_plugin for this
-# machine. An artifact, like the closures themselves -- under Nix it is a store path instead.
 /host-tools/

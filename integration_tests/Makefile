@@ -10,7 +10,7 @@
 # `mise run integration:grpc` create them; this Makefile only points at the result, so
 # running it directly on a tree that has never seen mise will fail on a missing venv.
 CLI_PYTHON  ?= $(abspath $(CURDIR)/../build/venv/bin/python)
-GRPC_PYTHON ?= $(abspath $(CURDIR)/../build/venv-grpc/bin/python)
+GRPC_PYTHON ?= $(abspath $(CURDIR)/../build/venv/grpc/bin/python)
 
 all:
 	@make -C xdyn PYTHON=$(CLI_PYTHON)

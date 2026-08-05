@@ -2,7 +2,7 @@
 # Pack a built closure into the release asset fetch.sh downloads, and print the line to
 # paste into assets.sha256.
 #
-#   tools/deps/pack.sh native   ->  build/deps-assets/lxdyn-deps-native.tar.zst
+#   tools/deps/pack.sh native   ->  build/scratch/deps-assets/lxdyn-deps-native.tar.zst
 #
 # What goes in is what a consumer reads, and nothing else:
 #
@@ -23,7 +23,7 @@ set -e
 FLAVOR=${1:-x86_64-linux-gnu}
 . "$(dirname "$0")/common.sh"
 
-OUT=${XDYN_PACK_OUT:-$REPO/build/deps-assets}
+OUT=${XDYN_PACK_OUT:-$REPO/build/scratch/deps-assets}
 ASSET=$OUT/lxdyn-deps-$FLAVOR.tar.zst
 STRIP=${XDYN_PACK_STRIP:-1}
 

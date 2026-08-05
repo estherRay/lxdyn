@@ -58,7 +58,7 @@ PROJECT_LOGO           =
 # entered, it will be relative to the location where doxygen was started. If
 # left blank the current directory will be used.
 
-OUTPUT_DIRECTORY       = build/doxygen
+OUTPUT_DIRECTORY       = build/doc/doxygen
 
 # If the CREATE_SUBDIRS tag is set to YES then doxygen will create 4096 sub-
 # directories (in 2 levels) under the output directory of each output format and
@@ -842,7 +842,7 @@ WARN_FORMAT            = "$file:$line: $text"
 # messages should be written. If left blank the output is written to standard
 # error (stderr).
 
-WARN_LOGFILE           = build/doxygen/doxygen_errors.txt
+WARN_LOGFILE           = build/doc/doxygen/doxygen_errors.txt
 
 #---------------------------------------------------------------------------
 # Configuration options related to the input files
@@ -935,7 +935,7 @@ EXCLUDE_SYMBOLS        = *Exception
 # command).
 
 EXAMPLE_PATH           = . \
-                         build/doxygen
+                         build/doc/doxygen
 
 # If the value of the EXAMPLE_PATH tag contains directories, you can use the
 # EXAMPLE_PATTERNS tag to specify one or more wildcard pattern (like *.cpp and

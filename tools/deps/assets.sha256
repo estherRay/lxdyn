@@ -8,7 +8,7 @@
 #   1. nix build .#libcxx-deps-<triple>          -- or tools/deps/build-all.sh <triple>
 #   2. XDYN_DEPS=<result> tools/deps/pack.sh <triple>
 #   3. bump the tag, paste the lines below
-#   4. gh release create <tag> build/deps-assets/lxdyn-deps-*.tar.zst
+#   4. gh release create <tag> build/scratch/deps-assets/lxdyn-deps-*.tar.zst
 #
 # Bump the tag whenever the recipes, the source pins, the zig version or the glibc floor
 # change. Never re-upload under an existing tag: anyone who already fetched it keeps a

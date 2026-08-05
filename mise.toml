@@ -1,19 +1,5 @@
 [tasks.setup]
 description = "Submodules and the SSC umbrella headers"
-# SSC's own .gitmodules is upstream's file and still relative: its seven children are
-# ../../ThirdParty/x.git, resolved against whatever remote SSC itself was cloned from. From
-# GitLab that is gitlab.com/sirehna_naval_group/ThirdParty/x; from our GitHub fork it becomes
-# github.com/ThirdParty/x, which does not exist, and a recursive init dies with "could not read
-# Username for 'https://github.com'". Pinning the URL here is the same stopgap the top level
-# used to need; fixing it properly means a commit on the SSC fork.
-#
-# Only f2c is pinned, and this deliberately does NOT recurse, because f2c is the only one of the
-# seven that anything uses: build.zig compiles external/ssc/ssc/f2c and puts it on the include
-# path, while eigen, gcovr, geographiclib, google-test, websocketpp and yaml-cpp are SSC's own
-# standalone-build dependencies that nothing here includes. websocketpp is the one worth naming
-# twice -- SSC's headers do include <websocketpp/...>, but that resolves through
-# -Iexternal/websocketpp, xdyn's own patched GitHub submodule, never SSC's copy. So a recursive
-# init was cloning six repositories to ignore all six.
 run = """
 git submodule update --init
 git -C external/ssc config submodule.ssc/f2c.url https://gitlab.com/sirehna_naval_group/ThirdParty/f2c.git
@@ -23,10 +9,6 @@ cd external/ssc/ssc && sh generate_module_header.sh
 
 [tasks.bootstrap]
 description = "First-time setup for a fresh clone: submodules, SSC headers and a closure"
-# The two things a fresh clone needs, as one command. `setup` stays separate and re-runnable --
-# it is how a clone poisoned by a failed submodule fetch recovers -- and the fetch is skipped
-# when a closure is already present, because fetch.sh deliberately refuses to overwrite one and
-# would otherwise make this task fail on its second run.
 run = '''
 mise run setup
 if [ -e libcxx-x86_64-linux-gnu ]; then
@@ -35,14 +17,6 @@ else
     mise run deps:fetch x86_64-linux-gnu
 fi
 '''
-
-# build.zig locates a closure through -Ddeps/$XDYN_DEPS, defaulting to libcxx-<flavor>/; the same
-# variable overrides where these tasks write one. Every non-host flavor needs x86_64-linux-gnu
-# first — they borrow its protoc — and is deliberately not declared as depending on it, since
-# that would rebuild it on every invocation.
-#
-# One task per target triple, and the triple is the whole name: it is what -Dtarget takes, what
-# build.zig derives libcxx-<triple> from, and what tools/deps/common.sh cases on.
 
 [tasks."deps:x86_64-linux-gnu"]
 description = "Build the x86_64-linux-gnu closure (glibc 2.28 floor) into libcxx-x86_64-linux-gnu/ (hours)"
@@ -62,17 +36,14 @@ run = "tools/deps/build-all.sh x86_64-windows-gnu"
 
 [tasks."deps:fetch"]
 description = "Download a prebuilt closure: mise run deps:fetch x86_64-linux-gnu"
-# The bootstrap answer for a fresh clone and for CI: ~30 MB per flavor against hours of
-# build. Hash-verified against tools/deps/assets.sha256, which also names the release tag.
 run = "sh tools/deps/fetch.sh"
 
 [tasks."deps:pack"]
 description = "Pack a built closure into a release asset: mise run deps:pack x86_64-linux-gnu"
 run = "sh tools/deps/pack.sh"
 
-# -fqemu/-fwine rather than the host's binfmt_misc: where a foreign binary is registered, zig runs
-# it transparently and this lane passes without either emulator being declared anywhere. That is a
-# property of the developer's machine, not of the repository.
+# -fqemu/-fwine rather than the host's binfmt_misc: where a foreign binary is registered,
+# zig runs it transparently and these lanes pass without either emulator being declared.
 [tasks."cross:aarch64-linux-musl"]
 description = "Run the unit suite for aarch64-linux-musl under qemu"
 run = "zig build test -Dtarget=aarch64-linux-musl -fqemu"
@@ -83,9 +54,6 @@ run = "zig build test -Dtarget=x86_64-windows-gnu -fwine"
 
 [tasks.cross]
 description = "Run both cross suites (needs `nix develop .#cross`)"
-# Sequential and explicit rather than `depends`, which mise is free to run in parallel:
-# two full builds at once interleave their output and double the peak disk. CI runs the
-# two granular tasks as separate jobs instead, so each only needs one target's closure.
 run = """
 mise run cross:aarch64-linux-musl
 mise run cross:x86_64-windows-gnu
@@ -97,41 +65,27 @@ run = "sh tools/gdb.sh"
 
 [tasks."zig:build"]
 description = "Build xdyn and the test runner -> build/<target>/bin"
-# `zig build test` compiles and runs the suite but installs nothing, so it does NOT leave
-# executables behind. Both integration lanes run the real binaries and depend on this.
 run = "zig build"
 
 [tasks.integration]
 description = "Run the 10 CLI integration tests against the zig build (no docker)"
 depends = ["zig:build"]
-# `uv sync`, not `uv pip install`: interpreter and packages both come from pyproject.toml +
-# the committed uv.lock, so this venv is reproducible rather than "whatever PyPI had today".
-# Under build/, beside the wrapper's. See pyproject.toml for what each group holds.
 run = """
-UV_PROJECT_ENVIRONMENT=build/venv uv sync --only-group test-cli --quiet
-make -C integration_tests/xdyn PYTHON="$PWD/build/venv/bin/python" all
+UV_PROJECT_ENVIRONMENT=build/venv/cli uv sync --only-group test-cli --quiet
+make -C integration_tests/xdyn PYTHON="$PWD/build/venv/cli/bin/python" all
 """
 
 [tasks."integration:setup"]
 description = "Python env + protobuf stubs for the gRPC/JSON tests"
-# --python 3.10 is Hazard N and nothing else: xdyngrpc does not import on 3.11+. It is spelled
-# out here rather than in requires-python because only this group is affected — narrowing the
-# project would also cap the wrapper's 3.10/3.13/3.15 matrix. See pyproject.toml.
-#
-# xdyngrpc/_proto is generated, not checked in. The submodule's own Makefile generates it by
-# building two docker images; grpc_tools is an ordinary pip package, so we don't.
 run = '''
-UV_PROJECT_ENVIRONMENT=build/venv-grpc uv sync --only-group test-grpc --python 3.10 --quiet
+UV_PROJECT_ENVIRONMENT=build/venv/grpc uv sync --only-group test-grpc --python 3.10 --quiet
 mkdir -p interfaces/xdyngrpc/_proto
 touch interfaces/xdyngrpc/_proto/__init__.py
-build/venv-grpc/bin/python -m grpc_tools.protoc \
+build/venv/grpc/bin/python -m grpc_tools.protoc \
     -I interfaces/proto \
     --python_out=interfaces/xdyngrpc/_proto \
     --grpc_python_out=interfaces/xdyngrpc/_proto \
     interfaces/proto/*.proto
-# Generated stubs import each other as top-level modules; make them package-relative.
-# Portability: no `sed -i` (BSD reads the next arg as a backup suffix) and `&` rather than
-# the GNU-only `\0` for "the whole match".
 for f in interfaces/xdyngrpc/_proto/*.py; do
     sed -E 's/^import.*_pb2/from . &/' "$f" > "$f.rel" && mv "$f.rel" "$f"
 done
@@ -146,84 +100,32 @@ make -C integration_tests/json_tests
 """
 
 [tasks."deploy:stage"]
-description = "Build the static musl binaries and stage them stripped into build/deploy/"
-# The target is not tuning, it is what makes `FROM scratch` possible. x86_64-linux-musl links
-# libc statically, on top of the libc++ and third-party libraries that were already static, so
-# the staged binaries need no loader and no base image underneath them. A default `zig build`
-# does the opposite: it targets the *host's* glibc, which on this box emits
-# remainder@GLIBC_2.43 and dies at startup with "version `GLIBC_2.43' not found" on anything
-# shipping less -- including Debian trixie, which is as new as base images get.
-#
-# The explicit -Dtarget is doing a second job, and it is why the image works at all. A
-# target-less build inside `nix develop` bakes /nix/store/...-glibc-2.42/lib/ld-linux-x86-64.so.2
-# in as PT_INTERP, which runs on that machine and nowhere else -- there is no /nix/store in a
-# container. A static musl build has no PT_INTERP at all, so there is nothing left to get
-# wrong. Never stage a target-less build.
-#
-# This needs libcxx-x86_64-linux-musl rather than the native closure: `mise run deps:fetch
-# x86_64-linux-musl` if it is not there, and build.zig finds it by name.
-#
-# --prefix on purpose: build.zig names its install trees <arch>-<os>-<abi>, so without it this
-# task would share build/x86_64-linux-musl/ with a plain `zig build -Dtarget=x86_64-linux-musl`
-# and the image could ship binaries that some other lane left behind.
-#
-# llvm-strip and llvm-readelf, never the binutils ones, and no fallback -- Hazard R. A strip
-# built for one architecture no-ops on anything else and still exits 0, so a fallback does not
-# degrade gracefully, it ships an unstripped image while reporting success. The devShell
-# deliberately carries no binutils at all, so a bare `readelf` here would be the host's.
-#
-# Six binaries, not all thirteen. run_all_tests, test_hs, yml2test and friends are development
-# tools; shipping them would triple the image to no one's benefit. The two generators earn
-# their place because they are how a user gets the tutorials that used to live in /usr/demos.
-#
-# zig:build is ordering, not output -- nothing below reads build/<triple>/bin. It is what stops
-# mise running this `zig build` concurrently with zig:build's, which deploy:test would
-# otherwise do, and two concurrent `zig build`s corrupt each other's *source tree*: build.zig's
-# first codegen step regenerates SSC's umbrella headers in place (has_side_effects, see
-# addCodegen), and idempotent is not atomic. The other build's compile jobs then read
-# ssc/websocket.hpp mid-rewrite and fail with "unknown type name 'Le'" -- SSC's French licence
-# comment parsed as code, because the opening `/*` had not been written back yet. A warm cache
-# hides this, which is why staging a target that was already built never tripped over it.
+description = "Build the static musl binaries and stage them stripped into build/scratch/deploy/"
 depends = ["zig:build"]
 run = '''
 set -e
 for t in llvm-strip llvm-readelf; do
     command -v $t > /dev/null 2>&1 || { echo "deploy:stage needs $t (pkgs.llvm)" >&2; exit 1; }
 done
-zig build -Dtarget=x86_64-linux-musl --prefix build/deploy-build
-rm -rf build/deploy
-mkdir -p build/deploy
-# The assertion this task exists to make, restated for a base image that contains nothing: not
-# "which glibc does this need" but "does this need anything at all". A PT_INTERP or a single
-# NEEDED entry is an image that builds and then cannot exec its own entrypoint, which is the
-# expensive way to find out. Every staged binary is checked, where the glibc floor check only
-# ever looked at xdyn.
+zig build -Dtarget=x86_64-linux-musl --prefix build/scratch/deploy-build
+rm -rf build/scratch/deploy
+mkdir -p build/scratch/deploy
 for b in xdyn xdyn-for-cs xdyn-for-me gz generate_yaml_example generate_stl_examples; do
-    cp "build/deploy-build/bin/$b" build/deploy/
-    llvm-strip --strip-debug "build/deploy/$b"
-    if llvm-readelf -l -d "build/deploy/$b" | grep -qE 'INTERP|NEEDED'; then
+    cp "build/scratch/deploy-build/bin/$b" build/scratch/deploy/
+    llvm-strip --strip-debug "build/scratch/deploy/$b"
+    if llvm-readelf -l -d "build/scratch/deploy/$b" | grep -qE 'INTERP|NEEDED'; then
         echo "refusing to stage: $b is dynamically linked, and FROM scratch has no loader" >&2
-        llvm-readelf -l -d "build/deploy/$b" | grep -E 'INTERP|NEEDED' >&2
+        llvm-readelf -l -d "build/scratch/deploy/$b" | grep -E 'INTERP|NEEDED' >&2
         exit 1
     fi
 done
 echo "six static binaries: no interpreter, no NEEDED entries"
-du -sh build/deploy
+du -sh build/scratch/deploy
 '''
 
 [tasks."deploy:image"]
 description = "Build the xdyn deploy image from the Containerfile"
 depends = ["deploy:stage"]
-# Both runtimes are driven identically below; podman is preferred only because it reads
-# ./Containerfile without -f. -f is passed explicitly so either one works the same way.
-#
-# `podman images` will report this image as created ~46 years ago. That is not a clock bug:
-# nix develop exports SOURCE_DATE_EPOCH=315532800 (1980-01-01) and buildah honours it, which
-# is reproducibility working rather than failing. Unset it if a real timestamp is wanted.
-#
-# The build context is the repository root, so .dockerignore is load-bearing rather than
-# tidy: only build/deploy/ is COPYed, and without it both runtimes tar .zig-cache first --
-# tens of GB before the first instruction runs.
 run = '''
 CONTAINER=${CONTAINER:-$(command -v podman > /dev/null 2>&1 && echo podman || echo docker)}
 "$CONTAINER" build -f Containerfile -t localhost/xdyn-deploy .
@@ -235,9 +137,6 @@ CONTAINER=${CONTAINER:-$(command -v podman > /dev/null 2>&1 && echo podman || ec
 
 [tasks."deploy:server-image"]
 description = "Build the xdyngrpc-python server image used by the deployment smoke test"
-# The real deployment image for the Python-side gRPC servers, straight out of the interfaces
-# submodule and unmodified. The smoke test's whole point is to exercise the artifact people
-# actually deploy, so this must not become a locally-tweaked variant of it.
 run = '''
 CONTAINER=${CONTAINER:-$(command -v podman > /dev/null 2>&1 && echo podman || echo docker)}
 "$CONTAINER" build -f interfaces/Dockerfile.python -t localhost/xdyngrpc-python interfaces
@@ -245,22 +144,18 @@ CONTAINER=${CONTAINER:-$(command -v podman > /dev/null 2>&1 && echo podman || ec
 
 [tasks."deploy:test"]
 description = "Deployment smoke test: the image starts, simulates, and serves gRPC"
-# zig:build as well as the two images: step 3 runs a *native* xdyn-for-me against the
-# containerised server, so it needs the ordinary build tree too.
 depends = ["zig:build", "deploy:image", "deploy:server-image", "integration:setup"]
 run = "sh integration_tests/deploy/run.sh"
 
 [tasks."python:setup"]
 description = "Python env for the pybind11 wrapper (pinned pybind11 + numpy)"
-run = 'UV_PROJECT_ENVIRONMENT=build/venv-wrapper uv sync --only-group wrapper --quiet'
+run = 'UV_PROJECT_ENVIRONMENT=build/venv/wrapper-3.10 uv sync --only-group wrapper --quiet'
 
 [tasks."python:build"]
 description = "Build the pybind11 extension module -> build/<triple>/python/"
 depends = ["python:setup"]
-# The import is the check: the module links no libpython, so a missing xdyn symbol links
-# quietly and only surfaces here. It also exercises module init and its ~700 registrations.
 run = '''
-PY=$PWD/build/venv-wrapper/bin/python
+PY=$PWD/build/venv/wrapper-3.10/bin/python
 zig build python -Dpython="$PY" \
     -Dgit-version="$(git describe --abbrev=0 --tag --always | cut -f2 -dv)"
 SO_DIR=$(sh tools/build-dir.sh)/python
@@ -273,48 +168,39 @@ echo "OK -> $SO"
 [tasks."python:test"]
 description = "Run the 285 Python binding tests against the built module"
 depends = ["python:build"]
-# Out of tree: several tests write YAML and CSV next to the cwd. The suite is named explicitly
-# because pytest resolves pyproject's testpaths against the invocation directory, not rootdir.
 run = '''
 SO_DIR=$(sh tools/build-dir.sh)/python
-mkdir -p build/python-tests
-cd build/python-tests
-PYTHONPATH="$SO_DIR" ../venv-wrapper/bin/python -m pytest ../../xdyn_wrapper_python/unit_tests
+TESTS=$PWD/xdyn_wrapper_python/unit_tests
+PY=$PWD/build/venv/wrapper-3.10/bin/python
+mkdir -p build/scratch/python-tests
+cd build/scratch/python-tests
+PYTHONPATH="$SO_DIR" "$PY" -m pytest "$TESTS"
 '''
 
 [tasks."python:matrix"]
 description = "Build and test the wrapper against each supported Python (3.10, 3.13, 3.15)"
-# What the retired Dockerfile_deb11_py3yz_{pybind,test} pair covered as Python x distro. The
-# distro axis is gone: zig targets a glibc floor and links libc++ statically, so only the
-# interpreter varies. Every version resolves a numpy that ships wheels for it, so no sync here
-# compiles numpy from source any more -- which is what the retired numpy<2 pin forced past 3.12.
 run = '''
 set -e
+TESTS=$PWD/xdyn_wrapper_python/unit_tests
 for V in ${XDYN_PYTHON_VERSIONS:-3.10 3.13 3.15}; do
     echo "--- Python $V"
-    UV_PROJECT_ENVIRONMENT=build/venv-wrapper-$V uv sync --only-group wrapper --python "$V" --quiet
-    PY=$PWD/build/venv-wrapper-$V/bin/python
+    UV_PROJECT_ENVIRONMENT=build/venv/wrapper-$V uv sync --only-group wrapper --python "$V" --quiet
+    PY=$PWD/build/venv/wrapper-$V/bin/python
     zig build python -Dpython="$PY" \
         -Dgit-version="$(git describe --abbrev=0 --tag --always | cut -f2 -dv)"
     SO_DIR=$(sh tools/build-dir.sh)/python
-    mkdir -p build/python-tests
-    (cd build/python-tests && PYTHONPATH="$SO_DIR" "$PY" -m pytest -q ../../xdyn_wrapper_python/unit_tests)
+    mkdir -p build/scratch/python-tests
+    (cd build/scratch/python-tests && PYTHONPATH="$SO_DIR" "$PY" -m pytest -q "$TESTS")
 done
 '''
 
 [tasks."python:wheel"]
 description = "Package the module as a wheel and check it in a clean venv"
 depends = ["python:build"]
-# setup.py's build_ext is a no-op subclass: it packages a *prebuilt* .so found at the path
-# distutils would have written one to. That path is not stable — it was lib.linux-x86_64-3.10 and
-# is lib.linux-x86_64-cpython-310 on current setuptools — so ask setuptools instead of hardcoding.
-#
-# Stripping happens on the way into the wheel, never in the build tree: `mise run gdb` needs the
-# debug info that makes the built .so 100x larger than the shipped one.
 run = '''
 set -e
 SO_DIR=$(sh tools/build-dir.sh)/python
-PY=$PWD/build/venv-wrapper/bin/python
+PY=$PWD/build/venv/wrapper-3.10/bin/python
 cd xdyn_wrapper_python
 DEST=$("$PY" -c "
 from setuptools import Extension
@@ -325,22 +211,12 @@ cmd.initialize_options(); cmd.finalize_options()
 print(cmd.get_ext_fullpath('xdyn'))
 ")
 mkdir -p "$(dirname "$DEST")"
-# By EXT_SUFFIX, not a glob: SO_DIR legitimately holds one .so per ABI it has been built for.
 SO=$SO_DIR/xdyn$("$PY" -c 'import sysconfig; print(sysconfig.get_config_var("EXT_SUFFIX"))')
 cp "$SO" "$DEST"
-# Not `zig objcopy --strip-debug`: it exists and answers "unimplemented" on this .so (zig 0.16).
-# Warn rather than fail if neither stripper is around -- a fat wheel still works, and this must
-# not be what blocks packaging.
 for s in llvm-strip strip; do
     if command -v "$s" > /dev/null 2>&1; then "$s" --strip-debug "$DEST" && break; fi
     [ "$s" = strip ] && echo "warning: no llvm-strip/strip on PATH -- shipping unstripped"
 done
-# The platform tag, and it is an assertion rather than a label. setuptools defaults to
-# `linux_x86_64`, which PyPI REFUSES on upload -- a Linux wheel must claim a manylinux
-# baseline. 2_28 is not a guess: it is the closure's glibc floor from tools/deps/common.sh,
-# and a8d2460a pins the native build to the same floor, so the module genuinely runs on
-# anything from Debian 10 / RHEL 8 up. Checked below rather than trusted, exactly like
-# deploy:stage does for the image, because mislabelling here fails at a user's `import`.
 GLIBC_FLOOR=2.28
 REQUIRED=$(llvm-nm -D --undefined-only "$DEST" | grep -oE 'GLIBC_[0-9.]+' | sed 's/^GLIBC_//')
 MAX=$(printf '%s\n%s\n' "$REQUIRED" "$GLIBC_FLOOR" | sort -V | tail -1)
@@ -348,53 +224,37 @@ MAX=$(printf '%s\n%s\n' "$REQUIRED" "$GLIBC_FLOOR" | sort -V | tail -1)
     echo "refusing to tag manylinux_${GLIBC_FLOOR%.*}_${GLIBC_FLOOR#*.}: needs GLIBC_$MAX" >&2
     exit 1
 }
-# No RPATH/RUNPATH either: one pointing into /nix/store would load here and nowhere else.
 if llvm-readelf -d "$DEST" | grep -qiE 'rpath|runpath'; then
     echo "refusing to package: the module carries an RPATH/RUNPATH" >&2
     llvm-readelf -d "$DEST" | grep -iE 'rpath|runpath' >&2
     exit 1
 fi
 echo "manylinux_2_28: max glibc required is $(printf '%s\n' "$REQUIRED" | sort -V | tail -1), no RPATH"
-# dist/ is emptied first because the clean-room check below installs `dist/*.whl`, and that
-# glob is only unambiguous when one wheel is there. Renaming the distribution or changing the
-# platform tag otherwise leaves the previous name behind and uv fails with "conflicting URLs
-# for package" -- pointing at two wheels that are both this task's output.
 rm -rf dist
 GIT_VERSION=$(git describe --abbrev=0 --tag --always | cut -f2 -dv) "$PY" setup.py --quiet \
     bdist_wheel --plat-name "manylinux_2_28_$(uname -m)"
 ls -la dist/*.whl
 cd ..
-# The wheel is the deliverable, so check the deliverable: a venv with numpy and a test runner and
-# nothing else -- no pybind11, no source tree on sys.path -- must import it and pass all 285.
-# --no-deps is now doing the opposite job it used to. It was here because the wheel declared no
-# dependencies at all; the wheel declares numpy, and refusing to resolve dependencies is what
-# turns that declaration into an assertion -- the wheelcheck group supplies numpy and nothing
-# else, so a dependency the wheel grows but does not declare fails here rather than being
-# silently pulled from PyPI behind the check's back.
-UV_PROJECT_ENVIRONMENT=build/venv-wheelcheck uv sync --only-group wheelcheck --quiet
-uv pip install --python build/venv-wheelcheck/bin/python --quiet --reinstall --no-deps \
+UV_PROJECT_ENVIRONMENT=build/venv/wheelcheck uv sync --only-group wheelcheck --quiet
+uv pip install --python build/venv/wheelcheck/bin/python --quiet --reinstall --no-deps \
     xdyn_wrapper_python/dist/*.whl
-mkdir -p build/python-tests
-cd build/python-tests
-../venv-wheelcheck/bin/python -m pytest -q ../../xdyn_wrapper_python/unit_tests
+TESTS=$PWD/xdyn_wrapper_python/unit_tests
+CHECKPY=$PWD/build/venv/wheelcheck/bin/python
+mkdir -p build/scratch/python-tests
+cd build/scratch/python-tests
+"$CHECKPY" -m pytest -q "$TESTS"
 '''
 
 [tasks."python:doc"]
-description = "Build the wrapper's Sphinx API documentation -> build/python-doc/html/"
+description = "Build the wrapper's Sphinx API documentation -> build/doc/python/html/"
 depends = ["python:build"]
-# autosummary has to import the extension module to introspect it. That, and only that, is why
-# this used to need a container with a wheel installed in it: PYTHONPATH to the build output does
-# the same job, so the doc build no longer needs docker or a wheel at all.
-#
-# sphinx-quickstart runs every time because conf.py is not committed, which is how this worked
-# before. Committing a conf.py instead would be the obvious next simplification.
 run = '''
 set -e
-UV_PROJECT_ENVIRONMENT=build/venv-doc uv sync --only-group doc --quiet
+UV_PROJECT_ENVIRONMENT=build/venv/doc uv sync --only-group doc --quiet
 SO_DIR=$(sh tools/build-dir.sh)/python
-PY=$PWD/build/venv-doc/bin/python
+PY=$PWD/build/venv/doc/bin/python
 DOC=$PWD/xdyn_wrapper_python/doc
-OUT=$PWD/build/python-doc
+OUT=$PWD/build/doc/python
 GIT_VERSION=$(git describe --abbrev=0 --tag --always | cut -f2 -dv)
 rm -rf "$OUT"
 mkdir -p "$OUT"
@@ -414,41 +274,30 @@ echo "OK -> $OUT/html/index.html"
 '''
 
 [tasks."doc:cpp"]
-description = "Build the C++ API reference with Doxygen -> build/doxygen/html/"
-# doxygen/Doxyfile is a plain Doxyfile now, not a @VAR@ template substituted by CMake. Every
-# path in it is relative, and doxygen resolves those against the *working directory* rather
-# than against the Doxyfile's own location -- which is why this runs from the repository
-# root and does not cd anywhere, and why the two paths the Doxyfile names internally
-# (LAYOUT_FILE, INPUT) read doxygen/... rather than being relative to the file itself.
+description = "Build the C++ API reference with Doxygen -> build/doc/doxygen/html/"
 run = '''
 set -e
-mkdir -p build/doxygen
+mkdir -p build/doc/doxygen
 doxygen doxygen/Doxyfile
-echo "OK -> $PWD/build/doxygen/html/index.html"
+echo "OK -> $PWD/build/doc/doxygen/html/index.html"
 '''
 
 [tasks."python:lint"]
 description = "Check the wrapper's Python with ruff"
-# `ruff check` only: ruff's formatter is not byte-compatible with the black the retired image
-# pinned, so enforcing it is a one-time reformat that belongs in its own commit.
 run = '''
-UV_PROJECT_ENVIRONMENT=build/venv-lint uv sync --only-group lint --quiet
-build/venv-lint/bin/ruff check
+UV_PROJECT_ENVIRONMENT=build/venv/lint uv sync --only-group lint --quiet
+build/venv/lint/bin/ruff check
 '''
 
 [tasks."python:format"]
 description = "Reformat the wrapper's Python with ruff (not enforced -- see python:lint)"
 run = '''
-UV_PROJECT_ENVIRONMENT=build/venv-lint uv sync --only-group lint --quiet
-build/venv-lint/bin/ruff format
+UV_PROJECT_ENVIRONMENT=build/venv/lint uv sync --only-group lint --quiet
+build/venv/lint/bin/ruff format
 '''
 
 [tasks.clean]
-description = "Remove build/ — the install trees, the venvs and the generated docs"
-# .zig-cache is deliberately NOT removed. It is the compilation cache, it reaches tens of GB,
-# and rebuilding it costs what a full build costs; `clean` is for the outputs, not the cache.
-# Delete it by hand when that is actually what you mean. Same reasoning as the closures,
-# which live outside build/ for exactly this reason -- see .gitignore.
+description = "Remove build/ — artifacts, venvs, task scratch and generated docs"
 run = "rm -rf build"
 
 [tasks.lint]

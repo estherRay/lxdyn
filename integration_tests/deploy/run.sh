@@ -21,7 +21,7 @@ set -eu
 SRC=$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)
 REPO=$(CDPATH= cd -- "$SRC/../.." && pwd)
 BIN=${BIN:-$(sh "$REPO/tools/build-dir.sh")/bin}
-WORK=$REPO/build/deploy-test
+WORK=$REPO/build/scratch/deploy-test
 
 # podman first: it reads ./Containerfile without -f, and it is what this was developed
 # against. docker works too; both are invoked with the same arguments below.
@@ -73,7 +73,7 @@ echo "=== deploy smoke test ($CONTAINER) ==="
 # Refuse to start if 9002 is already taken. xdyn binds with SO_REUSEPORT, so a leftover
 # server does not make the new one fail — both listen, and the kernel hands each connection
 # to one of them. The test then passes or fails depending on which one answers.
-if "$REPO/build/venv-grpc/bin/python" -c \
+if "$REPO/build/venv/grpc/bin/python" -c \
     'import socket,sys; s=socket.socket(); s.settimeout(0.5); sys.exit(0 if s.connect_ex(("127.0.0.1",9002))==0 else 1)' 2>/dev/null
 then
     echo "port 9002 is already in use -- a previous run probably leaked a server:" >&2
@@ -119,7 +119,7 @@ echo "--- 3/3  containerised gRPC server, native xdyn client"
 # forwarder (pasta/slirp4netns) accepts the connection on the host side immediately, before
 # anything inside the container has bound. The probe returned "reachable after 0 ms" and
 # xdyn then failed with UNAVAILABLE against a server that needed ~6 s to come up.
-if ! "$REPO/build/venv-grpc/bin/python" - <<'PY'
+if ! "$REPO/build/venv/grpc/bin/python" - <<'PY'
 import sys, time
 import grpc
 deadline = time.monotonic() + 60
@@ -167,7 +167,7 @@ xdyn_pid=$!
 # connect() IS a valid probe here — xdyn-for-me is a native process that binds 9002 itself.
 # That is precisely the case the containerised port above is not.
 i=0
-until "$REPO/build/venv-grpc/bin/python" -c \
+until "$REPO/build/venv/grpc/bin/python" -c \
     'import socket,sys; s=socket.socket(); s.settimeout(0.5); sys.exit(0 if s.connect_ex(("127.0.0.1",9002))==0 else 1)' 2>/dev/null
 do
     i=$((i + 1))
@@ -195,7 +195,7 @@ echo "    server received the spectrum (Hs 1.5, Tp 10)"
 # non-finite. Asserting on those numbers is what made an earlier version of this test flaky
 # (2 passes in 5). The physics is covered natively in integration_tests/grpc_tests; what is
 # being asserted here is that a request crosses the boundary and a well-formed reply returns.
-"$REPO/build/venv-grpc/bin/python" - <<'PY' || { echo "model-exchange call failed:"; cat xdyn.log; "$CONTAINER" logs "$NAME" 2>&1 | tail -20; exit 1; }
+"$REPO/build/venv/grpc/bin/python" - <<'PY' || { echo "model-exchange call failed:"; cat xdyn.log; "$CONTAINER" logs "$NAME" 2>&1 | tail -20; exit 1; }
 import sys
 from xdyngrpc.modelexchange import ModelExchangeEuler
 

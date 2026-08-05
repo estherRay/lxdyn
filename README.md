@@ -153,7 +153,7 @@ into the build tree, and the container image is built by copying them.
 ### Running xdyn in a container
 
 The image is built from the `Containerfile` at the repository root. It does no compiling —
-`mise run deploy:image` stages already-built, already-tested binaries into `build/deploy/`
+`mise run deploy:image` stages already-built, already-tested binaries into `build/scratch/deploy/`
 first, so the image ships exactly what the test suite ran:
 
 ```bash

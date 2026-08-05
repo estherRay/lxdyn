@@ -1,5 +1,5 @@
 # xdyn deploy image. Build it with `mise run deploy:image`, which stages stripped binaries
-# into build/deploy/ first — this file deliberately does no compiling, so the image ships the
+# into build/scratch/deploy/ first — this file deliberately does no compiling, so the image ships the
 # same binaries that were tested, not a second build of them.
 #
 # The replacement for ./Dockerfile — debian-bullseye-slim + `ADD xdyn.deb`, plus
@@ -46,7 +46,7 @@ FROM scratch
 # No apt install line, and now no package manager that could run one. The old image needed
 # libgfortran5 and libquadmath0 for a Fortran runtime the build never actually required, and
 # libicu67 for Boost.
-COPY build/deploy/ /usr/bin/
+COPY build/scratch/deploy/ /usr/bin/
 
 # /data, because xdyn writes its .h5/.csv/.json next to the cwd and the container's own
 # filesystem is the wrong place for that. WORKDIR is also the only thing that creates the

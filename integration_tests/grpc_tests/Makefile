@@ -24,4 +24,4 @@ model_exchange-2:
 	@sh model_exchange/test-2/run.sh
 
 clean:
-	@rm -rf ../../build/integration-tests
+	@rm -rf ../../build/scratch/integration-tests

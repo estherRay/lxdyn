@@ -33,7 +33,7 @@ all: invalid_yaml_returns_non_zero_error_code \
 # Derived from uname, not hardcoded: build.zig installs per target triple, so a fixed
 # x86_64-linux-gnu points at nothing on aarch64 or macOS. See ../../tools/build-dir.sh.
 BIN            ?= $(shell sh $(CURDIR)/../../tools/build-dir.sh)/bin
-WORK           ?= $(abspath $(CURDIR)/../../build/integration-tests)
+WORK           ?= $(abspath $(CURDIR)/../../build/scratch/integration-tests)
 XDYN           ?= $(BIN)/xdyn
 XDYN_FOR_CS    ?= $(BIN)/xdyn-for-cs
 XDYN_FOR_ME    ?= $(BIN)/xdyn-for-me

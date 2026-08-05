@@ -42,7 +42,7 @@ _find_repo() {
 
 REPO=${REPO:-$(_find_repo "$SRC")}
 BIN=${BIN:-$(sh "$REPO/tools/build-dir.sh")/bin}
-PYTHON=${PYTHON:-$REPO/build/venv-grpc/bin/python}
+PYTHON=${PYTHON:-$REPO/build/venv/grpc/bin/python}
 
 # xdyngrpc is not installed, it is imported from the submodule -- exactly what the
 # xdyngrpc-python image does with `ENV PYTHONPATH=/opt`. $SRC is on the path too, so a
@@ -58,7 +58,7 @@ _name=''
 
 scenario() {
     _name=$1
-    WORK=${WORK:-$REPO/build/integration-tests/$_name}
+    WORK=${WORK:-$REPO/build/scratch/integration-tests/$_name}
     rm -rf "$WORK"
     mkdir -p "$WORK"
     trap _cleanup EXIT HUP INT TERM
