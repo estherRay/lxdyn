@@ -342,6 +342,8 @@ void py_add_module_xdyn_env_wave(py::module& m_env)
             py::arg("omega_max"),
             py::arg("n"),
             py::arg("equal_energy_bins"),
+            py::arg("periodic") = false,
+            py::arg("repetition_sizes") = std::vector<double>(),
             R"(
             Returns `n` angular frequencies between omega_min (included) and omega_max (also included)
 
@@ -437,7 +439,7 @@ void py_add_module_xdyn_env_wave(py::module& m_env)
 
             - `psi` (float): Primary wave direction in radians.
             )")
-        .def("get_directions", &SumOfWaveDirectionalSpreadings::get_directions, py::arg("n"))
+        .def("get_directions", &SumOfWaveDirectionalSpreadings::get_directions, py::arg("n"), py::arg("periodic") = false)
         ;
 
     py::class_<DiracDirectionalSpreading, WaveDirectionalSpreading>(m_env, "DiracDirectionalSpreading")

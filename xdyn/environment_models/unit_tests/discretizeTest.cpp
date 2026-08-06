@@ -724,3 +724,67 @@ TEST_F(discretizeTest, equal_energy_bins)
     ASSERT_NEAR(3, B.omega[9], EPS);
     //! [discretizeTest equal_area_abscissae_expected_output]
 }
+
+TEST_F(discretizeTest, periodic_directions_are_distinct_and_sorted)
+{
+    const Cos2sDirectionalSpreading D(0, 2);
+    for (const size_t n : {8, 16, 24, 32, 48})
+    {
+        const std::vector<double> psi = D.get_directions(n, true);
+        ASSERT_EQ(n, psi.size());
+        for (size_t i = 0 ; i < psi.size() ; ++i)
+        {
+            ASSERT_GE(psi[i], 0);
+            ASSERT_LT(psi[i], 2*PI);
+            if (i) ASSERT_GT(psi[i], psi[i-1]) << "direction " << i << " repeats for n = " << n;
+        }
+    }
+}
+
+TEST_F(discretizeTest, periodic_directions_close_over_a_square_domain)
+{
+    const Cos2sDirectionalSpreading D(0, 2);
+    const double L = 400;
+    const std::vector<double> psi = D.get_directions(32, true);
+    for (const double p : psi)
+    {
+        // A direction is periodic over the domain when L*cos(psi) and L*sin(psi) are both integer
+        // multiples of the same base length, i.e. their ratio is rational
+        const double m = std::cos(p);
+        const double n = std::sin(p);
+        const bool on_an_axis = std::abs(m) < EPS || std::abs(n) < EPS;
+        if (on_an_axis) continue;
+        const double ratio = std::abs(n/m);
+        bool rational = false;
+        for (int q = 1 ; q <= 200 && not rational ; ++q)
+        {
+            rational = std::abs(ratio*q - std::round(ratio*q)) < 1e-9;
+        }
+        ASSERT_TRUE(rational) << "direction " << p*180/PI << " deg does not close over L = " << L;
+    }
+}
+
+TEST_F(discretizeTest, periodic_frequencies_fit_a_whole_number_of_wavelengths)
+{
+    const JonswapSpectrum S(1, 8, 3.3);
+    const std::vector<double> sizes = {400., 100.};
+    const std::vector<double> omega = S.get_angular_frequencies(0.1, 3, 10, false, true, sizes);
+    for (const double w : omega)
+    {
+        // omega^2 = g*k and k = 2*i*pi/L, so i = omega^2*L/(2*pi*g) must be a whole number for one
+        // of the declared repetition sizes
+        bool fits = false;
+        for (const double L : sizes)
+        {
+            const double i = w*w*L/(2*PI*9.81);
+            if (std::abs(i - std::round(i)) < 1e-9) fits = true;
+        }
+        ASSERT_TRUE(fits) << "omega = " << w << " does not fit any repetition size";
+    }
+}
+
+TEST_F(discretizeTest, periodic_frequencies_need_a_repetition_size)
+{
+    const JonswapSpectrum S(1, 8, 3.3);
+    ASSERT_THROW(S.get_angular_frequencies(0.1, 3, 10, false, true, {}), InvalidInputException);
+}

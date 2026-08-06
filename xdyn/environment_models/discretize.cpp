@@ -14,6 +14,7 @@
 #define _USE_MATH_DEFINE
 #include <cmath>
 #define PI M_PI
+#include <algorithm>
 #include <list>
 #include <utility> //std::pair
 #include <cmath> // For isnan
@@ -43,6 +44,16 @@ DiscreteDirectionalWaveSpectrum common(
 {
     DiscreteDirectionalWaveSpectrum ret;
     ret.omega = S.get_angular_frequencies(omega_min, omega_max, nfreq, equal_energy_bins, periodic, sizes);
+    if (periodic)
+    {
+        // One frequency set per repetition size, so the sets overlap wherever the sizes share a
+        // divisor: sort and drop the duplicates or those rays are counted twice.
+        std::sort(ret.omega.begin(), ret.omega.end());
+        const double eps = 1e-8;
+        ret.omega.erase(std::unique(ret.omega.begin(), ret.omega.end(),
+                                    [eps](const double a, const double b){return std::abs(a-b) <= eps;}),
+                        ret.omega.end());
+    }
     if (ndir==0)
     {
         THROW(__PRETTY_FUNCTION__, InvalidInputException, "ndir == 0");

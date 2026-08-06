@@ -78,6 +78,25 @@ std::vector<double> WaveSpectralDensity::get_angular_frequencies(const double om
         }
         return std::vector<double>(1, omega_min);
     }
+    if (periodic)
+    {
+        if (sizes.empty())
+        {
+            THROW(__PRETTY_FUNCTION__, InvalidInputException, "Space-periodic waves need at least one repetition size.")
+        }
+        // Deep-water dispersion omega^2 = g*k with k = 2*i*pi/L: an integer number of wavelengths
+        // fits the repetition size L, which is what makes the field repeat along that axis.
+        std::vector<double> omega;
+        omega.reserve(sizes.size()*n);
+        for (const double size:sizes)
+        {
+            for (size_t i = 1 ; i <= n ; ++i)
+            {
+                omega.push_back(std::sqrt(2*double(i)*M_PI*9.81/size));
+            }
+        }
+        return omega;
+    }
     std::vector<double> omega(n, 0);
     const double Domega = omega_max - omega_min;
     for (size_t i = 1 ; i <= n ; ++i)

@@ -62,6 +62,14 @@ class WaveDirectionalSpreading
             const bool periodic = false  //!< Pick directions that make the wave field periodic in space
             ) const;
 
+        /**  \brief Coprime pairs (m,n), each repeated eight times
+          *  \details A wave travelling along atan2(n,m) with m and n coprime closes on itself over a
+          *  square domain, which is what makes the field repeat. Each pair yields the eight directions
+          *  obtained by swapping and negating m and n, hence the repetition: get_directions consumes
+          *  one distinct pair every eight entries.
+          */
+        std::vector<std::pair<int,int> > build_coprimes(const size_t n) const;
+
         SumOfWaveDirectionalSpreadings operator+(const WaveDirectionalSpreading& w) const;
 
     protected:

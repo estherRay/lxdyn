@@ -140,6 +140,18 @@ void operator >> (const YAML::Node& node, YamlDiscretization& g)
     catch(std::exception& ) // Nothing to do: 'equal energy bins' section is not mandatory
     {
     }
+    if (node["periodic"])
+    {
+        node["periodic"] >> g.periodic;
+    }
+    if (node["repetition sizes"])
+    {
+        node["repetition sizes"] >> g.repetition_sizes;
+    }
+    if (g.periodic && g.repetition_sizes.empty())
+    {
+        THROW(__PRETTY_FUNCTION__, InvalidInputException, "Space-periodic waves were asked for, but no 'repetition sizes' were given in the 'discretization' section.")
+    }
 }
 
 void operator >> (const YAML::Node& node, YamlStretching& g)

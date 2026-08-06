@@ -22,6 +22,8 @@ struct YamlDiscretization
     double omega_max;       //!< Last angular frequency (in rad/s)
     double energy_fraction; //!< Between 0 and 1: sum(S(omega[i]).S(psi[j]),taken into account)/sum(S(omega[i]).S(psi[j]),total)
     bool equal_energy_bins; //!< False (by default) or true. When false, omegas are sampled regularly between omega_min and omega_max. When true, they are sampled such that the integral of the spectrum is constant between two consecutive omega values.
+    bool periodic;          //!< False (by default) or true. When true, directions and frequencies are chosen so the wave field repeats over 'repetition sizes'.
+    std::vector<double> repetition_sizes; //!< Lengths (in m) the wave field repeats over, largest first. Only used when 'periodic' is true.
 };
 
 struct YamlStretching
