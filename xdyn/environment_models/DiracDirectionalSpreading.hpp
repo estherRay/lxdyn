@@ -39,7 +39,8 @@ class DiracDirectionalSpreading : public WaveDirectionalSpreading
           *  \details Returns a vector containing only psi0
           *  \snippet environment_models/unit_tests/WaveSpectralDensityTest.cpp WaveSpectralDensityTest get_omega0_example
           */
-        std::vector<double> get_directions(const size_t n          //!< Ignored
+        std::vector<double> get_directions(const size_t n,         //!< Ignored
+                                           const bool periodic = false //!< Ignored
                                                    ) const;
 
     private:

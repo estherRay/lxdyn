@@ -47,7 +47,9 @@ DiscreteDirectionalWaveSpectrum discretize(
     const size_t nfreq,                //!< Number of frequencies in discrete spectrum
     const size_t ndir,                 //!< Number of directions in discrete spectrum
     const Stretching& stretching,      //!< Dilate z-axis to properly compute orbital velocities (delta-stretching)
-    const bool equal_energy_bins       //!< Choose omegas so the integral of S between two successive omegas is constant
+    const bool equal_energy_bins,      //!< Choose omegas so the integral of S between two successive omegas is constant
+    const bool periodic = false,       //!< Make the wave field repeat over the sizes below
+    const std::vector<double> sizes = {} //!< Repetition sizes in metres, largest first
     );
 
 /**  \author cady
@@ -65,7 +67,9 @@ DiscreteDirectionalWaveSpectrum discretize(
     const size_t ndir,                 //!< Number of directions in discrete spectrum
     const double h,                    //!< Water depth (in meters)
     const Stretching& stretching,      //!< Dilate z-axis to properly compute orbital velocities (delta-stretching)
-    const bool equal_energy_bins       //!< Choose omegas so the integral of S between two successive omegas is constant
+    const bool equal_energy_bins,      //!< Choose omegas so the integral of S between two successive omegas is constant
+    const bool periodic = false,       //!< Make the wave field repeat over the sizes below
+    const std::vector<double> sizes = {} //!< Repetition sizes in metres, largest first
     );
 
 /**  \author cady

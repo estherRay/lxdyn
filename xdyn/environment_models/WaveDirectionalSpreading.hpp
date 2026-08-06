@@ -58,7 +58,8 @@ class WaveDirectionalSpreading
           *  \snippet environment_models/unit_tests/WaveSpectralDensityTest.cpp WaveSpectralDensityTest get_omega0_example
           */
         virtual std::vector<double> get_directions(
-            const size_t n          //!< Number of angles to return
+            const size_t n,              //!< Number of angles to return
+            const bool periodic = false  //!< Pick directions that make the wave field periodic in space
             ) const;
 
         SumOfWaveDirectionalSpreadings operator+(const WaveDirectionalSpreading& w) const;

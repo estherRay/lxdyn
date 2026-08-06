@@ -24,7 +24,8 @@ WaveDirectionalSpreading::~WaveDirectionalSpreading()
 {
 }
 
-std::vector<double> WaveDirectionalSpreading::get_directions(const size_t n          //!< Number of angles to return
+std::vector<double> WaveDirectionalSpreading::get_directions(const size_t n,        //!< Number of angles to return
+                                                             const bool /*periodic*/
                                                              ) const
 {
     std::vector<double> psi(n, 0);
