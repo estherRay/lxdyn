@@ -80,3 +80,19 @@ double EnvironmentAndFrames::get_rho_air() const
     }
     return rho_air.get();
 }
+
+Eigen::Vector3d EnvironmentAndFrames::get_UWCurrent(const Eigen::Vector3d& position, const double t) const
+{
+    if (not UWCurrent)
+    {
+        return Eigen::Vector3d::Zero();
+    }
+    // The current models measure depth from the free surface, which is z=0 when no wave model is
+    // defined: querying w unconditionally would segfault on a current without waves.
+    double free_surface_height = 0.;
+    if (w.use_count())
+    {
+        free_surface_height = w->get_and_check_wave_height({position(0)}, {position(1)}, t).at(0);
+    }
+    return UWCurrent->get_UWCurrent(position, t, free_surface_height);
+}

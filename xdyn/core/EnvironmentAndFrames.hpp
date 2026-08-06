@@ -12,6 +12,7 @@
 #include "xdyn/core/StateMacros.hpp"
 #include "xdyn/core/SurfaceElevationInterface.hpp"
 #include "xdyn/environment_models/WindModel.hpp"
+#include "xdyn/environment_models/UWCurrentModel.hpp"
 #include "xdyn/external_data_structures/YamlRotation.hpp"
 #include <boost/optional.hpp>
 #include <ssc/kinematics.hpp>
@@ -26,6 +27,7 @@ struct EnvironmentAndFrames
                const StateType &state) const;
     SurfaceElevationPtr w;
     WindModelPtr wind;
+    UWCurrentModelPtr UWCurrent;
     ssc::kinematics::KinematicsPtr k;
     double rho;
     double nu;
@@ -34,6 +36,9 @@ struct EnvironmentAndFrames
 
     void set_rho_air (const double value);
     double get_rho_air () const;
+    /**  \brief Underwater current at a point of the NED frame, zero if no current model was defined
+      */
+    Eigen::Vector3d get_UWCurrent (const Eigen::Vector3d& position, const double t) const;
 
     private:
         boost::optional<double> rho_air;

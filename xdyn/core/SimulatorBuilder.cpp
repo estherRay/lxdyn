@@ -22,6 +22,7 @@ SimulatorBuilder::SimulatorBuilder(const YamlSimulatorInput& input_, const doubl
         directional_spreading_parsers(TR1(shared_ptr)<std::vector<DirectionalSpreadingBuilderPtr> >(new std::vector<DirectionalSpreadingBuilderPtr>())),
         spectrum_parsers(TR1(shared_ptr)<std::vector<SpectrumBuilderPtr> >(new std::vector<SpectrumBuilderPtr>())),
         wind_model_parsers(),
+        UWCurrent_model_parsers(),
         command_listener(command_listener_),
         t0(t0_)
 {
@@ -101,6 +102,19 @@ EnvironmentAndFrames SimulatorBuilder::build_environment_and_frames() const
                     THROW(__PRETTY_FUNCTION__, InternalErrorException, "More than one wind model was defined.");
                 }
                 env.wind = w.get();
+                env_model_successfully_parsed = true;
+            }
+        }
+        for(auto parser:UWCurrent_model_parsers)
+        {
+            boost::optional<UWCurrentModelPtr> c = parser(*that_model);
+            if (c)
+            {
+                if(env.UWCurrent)
+                {
+                    THROW(__PRETTY_FUNCTION__, InternalErrorException, "More than one underwater current model was defined.");
+                }
+                env.UWCurrent = c.get();
                 env_model_successfully_parsed = true;
             }
         }
