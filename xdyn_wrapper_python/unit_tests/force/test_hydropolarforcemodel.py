@@ -605,7 +605,7 @@ class HydroPolarForceModelTest(unittest.TestCase):
         buf = io.StringIO()
         with redirect_stderr(buf):
             wrench = force_model.get_force(states, 0, env)
-        expected_msg = "WARNING: In hydrodynamic polar force model 'test', the calculation point seems to be outside of the water (z = 5). In consequence, no force is being applied by this model."
+        expected_msg = "WARNING: In hydrodynamic polar force model 'test', the calculation point is outside of the water (z = -5). In consequence, no force is being applied by this model."
         self.assertTrue(expected_msg in buf.getvalue(), buf.getvalue())
         assert_is_almost_zero = lambda x: self.assertAlmostEqual(x, 0.0, delta=1e-12)
         assert_is_almost_zero(wrench.X())

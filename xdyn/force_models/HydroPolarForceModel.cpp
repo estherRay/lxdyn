@@ -116,79 +116,57 @@ HydroPolarForceModel::Input HydroPolarForceModel::parse(const std::string& yaml)
 
 Wrench HydroPolarForceModel::get_force(const BodyStates& states, const double t, const EnvironmentAndFrames& env, const std::map<std::string,double>& commands) const
 {
-    using namespace std;
-    const Eigen::Vector3d omega(states.p(), states.q(), states.r());
-    const Eigen::Vector3d Vo(states.u(), states.v(), states.w());
-    const auto T = env.k->get(name, body_name);
-    const Eigen::Vector3d P_body = T.get_point().v; // Coordinates of point P in body frame
-    const Eigen::Vector3d Vp_body = Vo - P_body.cross(omega); // Velocity of point P of body relative to NED, expressed in body frame
-    Eigen::Vector3d Vp = T.get_rot()*Vp_body; // Velocity of P in fluid, expressed in internal frame
-    const auto rotation = states.get_rot_from_ned_to_body();
-    const Eigen::Vector3d P_NED = Eigen::Vector3d(states.x(), states.y(), states.z()) + rotation*P_body; // Coordinates of point P in NED frame
-    double water_height = 0.;
+    // get_rot_from_ned_to_body() returns the body->NED transform in spite of its name: core/Body.cpp
+    // integrates dx/dt = R*(u,v,w), and (u,v,w) and (p,q,r) are body-frame quantities.
+    const ssc::kinematics::RotationMatrix ctm_body_to_ned = states.get_rot_from_ned_to_body();
+    const ssc::kinematics::RotationMatrix ctm_body_to_foil = env.k->get(name, body_name).get_rot();
+    const Eigen::Vector3d body_position_in_ned(states.x(), states.y(), states.z());
+    const Eigen::Vector3d body_velocity(states.u(), states.v(), states.w());
+    const Eigen::Vector3d body_angular_velocity(states.p(), states.q(), states.r());
+    const Eigen::Vector3d foil_position_in_body = env.k->get(body_name, name).get_point().v;
+    const Eigen::Vector3d foil_position_in_ned = body_position_in_ned + ctm_body_to_ned*foil_position_in_body;
+    // Built from body-frame quantities alone, so the inflow cannot depend on the vessel's heading
+    Eigen::Vector3d flow_in_foil = ctm_body_to_foil*(body_velocity + body_angular_velocity.cross(foil_position_in_body));
+    double water_surface_height = 0.;
     if (env.w.use_count())
     {
-        const auto wave_height = env.w->get_and_check_wave_height({P_NED(0)}, {P_NED(1)}, t);
+        const auto wave_height = env.w->get_and_check_wave_height({foil_position_in_ned(0)}, {foil_position_in_ned(1)}, t);
         if (use_waves_velocity)
         {
-            const auto wave_velocity_matrix = env.w->get_and_check_orbital_velocity(env.g, {P_NED(0)}, {P_NED(1)}, {P_NED(2)}, t, wave_height);
-            const Eigen::Vector3d Vw_NED(wave_velocity_matrix.m(0,0), wave_velocity_matrix.m(1,0), wave_velocity_matrix.m(2,0)); // Velocity of wave flow
-            Vp -= env.k->get(name, wave_velocity_matrix.get_frame()).get_rot()*Vw_NED;
+            const auto orbital_velocity = env.w->get_and_check_orbital_velocity(env.g, {foil_position_in_ned(0)}, {foil_position_in_ned(1)}, {foil_position_in_ned(2)}, t, wave_height);
+            const Eigen::Vector3d wave_velocity_in_ned(orbital_velocity.m(0,0), orbital_velocity.m(1,0), orbital_velocity.m(2,0));
+            flow_in_foil -= env.k->get(name, orbital_velocity.get_frame()).get_rot()*wave_velocity_in_ned;
         }
-        water_height = wave_height.at(0);
+        water_surface_height = wave_height.at(0);
     }
-    const double beta = -atan2(Vp(1), Vp(0)); // Incident angle of the flow, in [-pi,pi]
-    const double U = sqrt(Vp(0)*Vp(0) + Vp(1)*Vp(1)); // Apparent flow velocity projected in the (x,y) plane of the internal frame
+    const double beta = -std::atan2(flow_in_foil(1), flow_in_foil(0)); // Incident angle of the flow, in [-pi,pi]
+    const double U = std::hypot(flow_in_foil(0), flow_in_foil(1)); // Apparent flow velocity in the foil's (x,y) plane
     double alpha = beta; // Angle of attack
     if (angle_command)
     {
         alpha += commands.at(angle_command.get());
     }
-    alpha = remainder(alpha, 2*M_PI); // Putting alpha in [-pi,pi]
-    Wrench ret(ssc::kinematics::Point(name,0,0,0), name);
-    if (P_NED(2) > water_height)
-    {
-        std::cerr << "WARNING: In hydrodynamic polar force model '" << name << "', the calculation point seems to be outside of the water (z = " << P_NED(2) << "). In consequence, no force is being applied by this model." << std::endl;
-    }
-    else
-    {
-        const double alpha_prime = (symmetry && alpha<0) ? -alpha : alpha;
-        const double lift = 0.5*Cl->f(alpha_prime)*env.rho*pow(U, 2)*reference_area;
-        const double drag = 0.5*Cd->f(alpha_prime)*env.rho*pow(U, 2)*reference_area;
-        if (alpha>=0)
-        {
-            ret.X() = -drag*cos(beta) + lift*sin(beta);
-            ret.Y() =  drag*sin(beta) + lift*cos(beta);
-        }
-        else
-        {
-            ret.X() = -drag*cos(beta) - lift*sin(beta);
-            ret.Y() =  drag*sin(beta) - lift*cos(beta);
-        }
-        if (Cm)
-        {
-            double normalization_cubic_length;
-            if (chord_length.is_initialized())
-            {
-                normalization_cubic_length = reference_area*chord_length.get();
-            }
-            else
-            {
-                normalization_cubic_length = pow(reference_area, 1.5);
-            }
-            const double moment = 0.5*Cm->f(alpha_prime)*env.rho*pow(U, 2)*normalization_cubic_length;
-            if (alpha>=0)
-            {
-                ret.N() = moment;
-            }
-            else
-            {
-                ret.N() = -moment;
-            }
-        }
-    }
+    alpha = std::remainder(alpha, 2*M_PI); // Putting alpha in [-pi,pi]
     *angle_of_attack = alpha;
     *relative_velocity = U;
+    Wrench ret(ssc::kinematics::Point(name,0,0,0), name);
+    // NED z points down, so the calculation point is submerged when it lies below the free surface
+    if (foil_position_in_ned(2) < water_surface_height)
+    {
+        std::cerr << "WARNING: In hydrodynamic polar force model '" << name << "', the calculation point is outside of the water (z = " << foil_position_in_ned(2) << "). In consequence, no force is being applied by this model." << std::endl;
+        return ret;
+    }
+    const double alpha_prime = (symmetry && alpha<0) ? -alpha : alpha;
+    const double lift = 0.5*Cl->f(alpha_prime)*env.rho*U*U*reference_area;
+    const double drag = 0.5*Cd->f(alpha_prime)*env.rho*U*U*reference_area;
+    const double lift_sign = (alpha>=0) ? 1. : -1.;
+    ret.X() = -drag*std::cos(beta) + lift_sign*lift*std::sin(beta);
+    ret.Y() =  drag*std::sin(beta) + lift_sign*lift*std::cos(beta);
+    if (Cm)
+    {
+        const double normalization_cubic_length = chord_length.is_initialized() ? reference_area*chord_length.get() : std::pow(reference_area, 1.5);
+        ret.N() = lift_sign*0.5*Cm->f(alpha_prime)*env.rho*U*U*normalization_cubic_length;
+    }
     return ret;
 }
 
