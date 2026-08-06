@@ -1,6 +1,6 @@
 .PHONY: all clean
 
-# The pre-requisite step used to be `make -C ../interfaces build`, which built two docker
+# The pre-requisite step used to be `make -C ../external/interfaces build`, which built two docker
 # images and a wheel just to obtain the generated protobuf stubs. Those stubs are the only
 # part xdyn's tests need, and grpc_tools is an ordinary pip package: `mise run integration`
 # generates them into the venv-backed work dir instead. See tools/scenario.sh.

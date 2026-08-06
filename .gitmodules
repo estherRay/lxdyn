@@ -3,7 +3,7 @@
 	path = external/ssc
 	url = https://github.com/naval-group/scientific_computing.git
 [submodule "interfaces"]
-	path = interfaces
+	path = external/interfaces
 	url = https://github.com/naval-group/interfaces.git
 [submodule "external/websocketpp"]
 	path = external/websocketpp
