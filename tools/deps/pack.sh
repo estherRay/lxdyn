@@ -39,7 +39,7 @@ STRIP=${XDYN_PACK_STRIP:-1}
 # The symbol list is captured first and tested second, with no 2>/dev/null and no `|| true`. Read
 # as one pipeline the check cannot fail: a missing llvm-nm, an unreadable archive and a clean one
 # all produce no output, `grep -c` answers 0, and the gate opens. build-boost.sh carried the same
-# construction and passed in a sandbox with no llvm in it -- Hazard R, an assertion that cannot
+# construction and passed in a sandbox with no llvm in it -- an assertion that cannot
 # run reporting success. This one guards what gets published.
 if [ "$FLAVOR" = x86_64-linux-gnu ]; then
     syms=$(llvm-nm --undefined-only "$DEPS/libxdyndeps_core.a") || {

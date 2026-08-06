@@ -37,4 +37,4 @@ Two consequences worth knowing:
   rewrites those to localhost.
 
 Testing the *deployment* — the wave/force server as a real container, reached over a real
-network hop — is a separate concern, and is not covered here. See migration-plan.md §4.
+network hop — is a separate concern, and is not covered here.

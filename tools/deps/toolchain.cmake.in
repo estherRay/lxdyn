@@ -6,7 +6,7 @@ set(CMAKE_RC_COMPILER @BIN@/zig-rc)
 
 # The archiver too, not just the compiler. Without these CMake finds the host's ar and ranlib,
 # which are built for one architecture: indexing aarch64 or COFF objects with a single-target
-# binutils is Hazard R's shape, and the bad archive ends up in a published closure. zig ar is
+# binutils produces a bad archive that ends up in a published closure. zig ar is
 # target-agnostic. These wrappers shipped for a long time without being wired to anything.
 set(CMAKE_AR @BIN@/zig-ar)
 set(CMAKE_RANLIB @BIN@/zig-ranlib)

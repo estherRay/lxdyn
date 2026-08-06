@@ -33,7 +33,7 @@ JAM
 # Asserted positively, the way build-grpc.sh does, and with no 2>/dev/null. The negative form --
 # "fail if __cxx11 appears" -- passes when llvm-nm is absent, when the glob matches nothing, and
 # when the archive is unreadable, because all three produce no output for grep to find. It did
-# exactly that in a build sandbox with no llvm in it: Hazard R's shape, an assertion that cannot
+# exactly that in a build sandbox with no llvm in it: an assertion that cannot
 # run reporting success. libboost_filesystem carries 95 St3__1 symbols when the wrapper takes.
 if ! llvm-nm "$DEPS/install/lib/"libboost_filesystem.* | grep -q 'St3__1'; then
   echo "boost: no libc++ mangling in the output -- the zig wrapper did not take" >&2

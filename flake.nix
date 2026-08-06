@@ -45,7 +45,7 @@
       #
       # stdenvNoCC, never a cc stdenv and never libcxxStdenv: Nix must put no compiler and no
       # libstdc++ anywhere near this, and a derivation reaching for nixpkgs' libc++ would put
-      # a *second* libc++ in the graph (Hazard B). zig owns the whole graph or none of it.
+      # a *second* libc++ in the graph. zig owns the whole graph or none of it.
       #
       # src is tools/deps/ rather than the repository: $REPO is only ever a default for the
       # three variables set below, so nothing else is read -- and with `src = self` every
@@ -113,7 +113,7 @@
 
           # The archives are the product. Fixup would strip them with binutils, which is built
           # for one architecture, no-ops per member on a foreign archive and still exits 0 --
-          # Hazard R, the defect that made an aarch64 asset 264 MB instead of 44.
+          # the defect that made an aarch64 asset 264 MB instead of 44.
           dontFixup = true;
 
           buildPhase = ''
@@ -221,7 +221,7 @@
                                                           # built for one architecture: on the
                                                           # aarch64 and Windows archives strip
                                                           # fails per member and still exits 0
-                                                          # (Hazard R). The llvm tools are
+                                                          # The llvm tools are
                                                           # target-agnostic. See the second
                                                           # boxed warning below before reaching
                                                           # for pkgs.binutils to get `nm`.
@@ -250,8 +250,8 @@
 
         # ⛔ Do not add pkgs.boost / pkgs.grpc / pkgs.hdf5 / pkgs.yaml-cpp / pkgs.gtest here.
         # They are libstdc++ builds. Linking one against a zig cc object fails on mangling
-        # (Hazard A), and getting one in by accident risks two libc++ versions in a single
-        # graph (Hazard B), which fails at link time if you are lucky and at runtime if you
+        # and getting one in by accident risks two libc++ versions in a single
+        # graph, which fails at link time if you are lucky and at runtime if you
         # are not. Every C++ library xdyn links comes from the closure in tools/deps/, built
         # by zig cc against zig's libc++. That is the rule the first attempt at this migration
         # died for.

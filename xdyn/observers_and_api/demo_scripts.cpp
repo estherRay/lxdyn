@@ -45,7 +45,7 @@ namespace
     };
 
     // datasetName carries the *script's* extension while the C++ side is named after
-    // the extension-free stem. Conflating the two is Hazard M: it silently dropped
+    // the extension-free stem. Conflating the two silently dropped
     // /scripts/* from every HDF5 file for years. Covered by the integration test
     // extra_hdf5_output_when_required, which h5dumps these exact two dataset names.
     void exportScripts(

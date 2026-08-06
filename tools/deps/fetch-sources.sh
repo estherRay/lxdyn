@@ -9,7 +9,7 @@ clone() {  # $1 = url, $2 = tag, $3 = directory
 }
 
 # yaml-cpp used to come from an external/ submodule instead, so that the closure and the CMake
-# lane compiled the same sources. C22 deleted that lane and the closure is now yaml-cpp's only
+# lane compiled the same sources. Deleting that lane left the closure as yaml-cpp's only
 # consumer, so the submodule bought nothing and cost something: a git submodule is invisible to
 # a Nix flake source, which would have left the one dependency Nix could not pin.
 clone https://github.com/jbeder/yaml-cpp yaml-cpp-0.9.0 yaml-cpp
@@ -31,12 +31,12 @@ clone https://github.com/HDFGroup/hdf5 hdf5_1.14.6 hdf5
 # Built by zig, and deliberately NOT through bootstrap.sh: that script clears CXX before
 # probing the host for a compiler and passes nothing through, so no variable can steer it.
 # The engine's own build.sh takes --cxx. Without this the closure build silently needs a host
-# C++ compiler nobody declared -- the devShell has had none since C23, so b2 was being built
+# C++ compiler nobody declared -- the devShell has none at all, so b2 was being built
 # by whatever /usr/bin happened to offer, and the build simply failed on a machine with none.
 #
 # musl, so b2 comes out statically linked and runs on any Linux of this architecture. It
 # outlives the shell that made it: $SRC is shared across flavors and can be shared between
-# clones, so a b2 tied to one machine's glibc would be a trap (see Hazard T).
+# clones, so a b2 tied to one machine's glibc would be a trap.
 [ -x "$SRC/boost_1_89_0/b2" ] || (
   cd "$SRC/boost_1_89_0/tools/build/src/engine"
   # Through `sh`, not ./build.sh: its shebang is `#!/usr/bin/env sh`, and a build sandbox

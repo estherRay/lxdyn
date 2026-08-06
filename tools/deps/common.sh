@@ -72,8 +72,8 @@ BUILD=$SRC/build/$FLAVOR
 mkdir -p "$SRC" "$BUILD" "$DEPS/install/lib" "$DEPS/install/include"
 
 # Checked here rather than three components in, when cmake is missing and the error is a
-# shell's. `nix develop` alone carries neither cmake nor ninja: C22 deleted the CMake lane and
-# C23 stopped provisioning its tools, and nothing in `zig build` wants them. They live in the
+# shell's. `nix develop` alone carries neither cmake nor ninja: both went with the CMake lane
+# and nothing in `zig build` wants them. They live in the
 # .#deps shell, together with the emulators b2's cross configure probes need.
 #
 # llvm-nm is in the list because build-boost.sh and build-grpc.sh assert on its output, and it

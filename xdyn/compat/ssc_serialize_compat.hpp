@@ -1,4 +1,4 @@
-// xdyn-side libc++ compatibility shim for SSC's SerializeMapsSetsAndVectors.hpp (Hazard D).
+// xdyn-side libc++ compatibility shim for SSC's SerializeMapsSetsAndVectors.hpp.
 //
 // SSC keys its std::vector/map/set/pair operator<< off libstdc++-internal include guards
 // (_GLIBCXX_VECTOR/_MAP/_SET/_STL_PAIR_H). Under libc++ those are never defined, so the operators
@@ -18,7 +18,7 @@
 #include <utility>
 #include <list>
 
-// Hazard G — libc++ behavioural gap. SSC's ssc::data_source::coerce(list<double>&,
+// libc++ behavioural gap. SSC's ssc::data_source::coerce(list<double>&,
 // const vector<T>&) iterates the vector and recurses on *it. For vector<bool>,
 // libstdc++ yields a plain `bool` (matches the arithmetic overload) but libc++
 // yields a proxy `__bit_const_reference`, which matches nothing → "no matching
