@@ -53,10 +53,12 @@ ResistanceCurveForceModel::Yaml ResistanceCurveForceModel::parse(const std::stri
     return ret;
 }
 
-Wrench ResistanceCurveForceModel::get_force(const BodyStates& states, const double /*t*/, const EnvironmentAndFrames&, const std::map<std::string,double>&) const
+Wrench ResistanceCurveForceModel::get_force(const BodyStates& states, const double t, const EnvironmentAndFrames& env, const std::map<std::string,double>&) const
 {
     ssc::kinematics::Vector6d tau = ssc::kinematics::Vector6d::Zero();
     const auto filtered = states.get_filtered_states();
-    tau(0) = -pimpl->get_resistance(filtered.u);
+    // Resistance follows the speed through the water, not over the ground
+    const Eigen::Vector3d current_in_body = states.get_rot_from_ned_to_body().transpose()*env.get_UWCurrent(Eigen::Vector3d(states.x(), states.y(), states.z()), t);
+    tau(0) = -pimpl->get_resistance(filtered.u - current_in_body(0));
     return Wrench(states.hydrodynamic_forces_calculation_point, body_name, tau);
 }

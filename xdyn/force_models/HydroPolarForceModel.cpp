@@ -139,6 +139,7 @@ Wrench HydroPolarForceModel::get_force(const BodyStates& states, const double t,
         }
         water_surface_height = wave_height.at(0);
     }
+    flow_in_foil -= ctm_body_to_foil*ctm_body_to_ned.transpose()*env.get_UWCurrent(foil_position_in_ned, t);
     const double beta = -std::atan2(flow_in_foil(1), flow_in_foil(0)); // Incident angle of the flow, in [-pi,pi]
     const double U = std::hypot(flow_in_foil(0), flow_in_foil(1)); // Apparent flow velocity in the foil's (x,y) plane
     double alpha = beta; // Angle of attack

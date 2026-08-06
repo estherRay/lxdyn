@@ -340,7 +340,7 @@ TEST_F(WageningenControlledForceModelTest, can_calculate_advance_ratio)
     states.u.record(0, 3);
     std::map<std::string,double> commands;
     commands["rpm"] = 20*2*PI;
-    ASSERT_DOUBLE_EQ(3./400., w.advance_ratio(states, commands));
+    ASSERT_DOUBLE_EQ(3./400., w.advance_ratio(states, 0, get_env(), commands));
 }
 
 TEST_F(WageningenControlledForceModelTest, force)

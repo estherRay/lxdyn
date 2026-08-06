@@ -218,13 +218,16 @@ RudderForceModel::RudderForceModel(
 
 ssc::kinematics::Vector6d RudderForceModel::get_rudder_force(
     const BodyStates& states,
-    const double /*t*/,
+    const double t,
     const EnvironmentAndFrames& env,
     const std::map<std::string,double>& commands,
     const double T
     ) const
 {
-    const double Va = states.u()*(1-w); // Cf. "Maneuvering Technical Manual", J. Brix, Seehafen Verlag p. 96, eq. 1.2.41
+    // Speed of advance through the water: the NED current has to be expressed in the body frame
+    // before it can be taken off the body-frame surge.
+    const Eigen::Vector3d current_in_body = states.get_rot_from_ned_to_body().transpose()*env.get_UWCurrent(Eigen::Vector3d(states.x(), states.y(), states.z()), t);
+    const double Va = (states.u()-current_in_body(0))*(1-w); // Cf. "Maneuvering Technical Manual", J. Brix, Seehafen Verlag p. 96, eq. 1.2.41
     const double DVa = model.get_D()*Va;
     // Thrust loading coefficient, Cf. "Maneuvering Technical Manual", J. Brix, Seehafen Verlag p. 84, eq. 1.2.20
     const double CTh = std::abs(DVa) < 1e-10 ? 8e20 / PI * T / env.rho : 8 / PI * T / (env.rho * DVa*DVa);
