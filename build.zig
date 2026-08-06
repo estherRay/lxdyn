@@ -370,6 +370,8 @@ fn addCommonIncludes(b: *std.Build, m: *std.Build.Module) void {
     m.addIncludePath(codegen.proto_services);
     m.addSystemIncludePath(b.path("external/thirdparty/eigen3-hdf5"));
     m.addSystemIncludePath(b.path("external/thirdparty"));
+    // System include: stb is warning-noisy under -Wall -Wextra and is not ours to fix
+    m.addSystemIncludePath(b.path("external/stb"));
     if (eigen_include) |eigen| m.addSystemIncludePath(.{ .cwd_relative = eigen });
 }
 
