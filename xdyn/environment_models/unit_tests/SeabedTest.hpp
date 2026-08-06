@@ -1,0 +1,22 @@
+/*
+ * SeabedTest.hpp
+ */
+
+#ifndef SEABEDTEST_HPP_
+#define SEABEDTEST_HPP_
+
+#include "gtest/gtest.h"
+#include <ssc/random_data_generator.hpp>
+#include "Seabed.hpp"
+
+class SeabedTest : public ::testing::Test
+{
+    protected:
+        SeabedTest();
+        virtual ~SeabedTest();
+        virtual void SetUp();
+        virtual void TearDown();
+        ssc::random_data_generator::DataGenerator a;
+};
+
+#endif /* SEABEDTEST_HPP_ */
