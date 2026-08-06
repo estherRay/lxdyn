@@ -16,6 +16,7 @@ struct XdynForMECommandLineArguments
     XdynForMECommandLineArguments();
     std::vector<std::string> yaml_filenames;
     bool catch_exceptions;
+    std::string address;
     short unsigned int port;
     bool empty() const;
     bool verbose;

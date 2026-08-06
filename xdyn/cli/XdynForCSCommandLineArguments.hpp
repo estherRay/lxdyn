@@ -19,6 +19,7 @@ struct XdynForCSCommandLineArguments
     std::string solver;
     double initial_timestep;
     bool catch_exceptions;
+    std::string address;
     short unsigned int port;
     bool verbose;
     bool show_help;
