@@ -1,10 +1,10 @@
 	
 [submodule "external/ssc"]
 	path = external/ssc
-	url = ../scientific_computing
+	url = https://github.com/naval-group/scientific_computing.git
 [submodule "interfaces"]
 	path = interfaces
-	url = ../interfaces
+	url = https://github.com/naval-group/interfaces.git
 [submodule "code/yaml-cpp"]
 	path = external/yaml-cpp
 	url = https://github.com/jbeder/yaml-cpp
