@@ -3561,6 +3561,12 @@ std::string test_data::bug_3227()
     return ss.str();
 }
 
+std::string test_data::basic_buoyancy_force()
+{
+    return "model: basic buoyancy\n"
+           "volume: {value: 1.7, unit: m3}\n";
+}
+
 std::string test_data::constant_force()
 {
     return "model: constant force\n"

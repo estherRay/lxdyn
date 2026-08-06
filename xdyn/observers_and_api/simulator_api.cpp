@@ -31,6 +31,7 @@
 #include "xdyn/force_models/FroudeKrylovForceModel.hpp"
 #include "xdyn/force_models/GMForceModel.hpp"
 #include "xdyn/force_models/GravityForceModel.hpp"
+#include "xdyn/force_models/BasicBuoyancyForceModel.hpp"
 #include "xdyn/force_models/HoltropMennenForceModel.hpp"
 #include "xdyn/force_models/HydroPolarForceModel.hpp"
 #include "xdyn/force_models/KtKqForceModel.hpp"
@@ -67,6 +68,7 @@ SimulatorBuilder get_builder(const YamlSimulatorInput& input, const double t0, c
            .can_parse<SurfaceElevationFromGRPC>()
            .can_parse<WageningenControlledForceModel>()
            .can_parse<GravityForceModel>()
+           .can_parse<BasicBuoyancyForceModel>()
            .can_parse<ExactHydrostaticForceModel>()
            .can_parse<FastHydrostaticForceModel>()
            .can_parse<FroudeKrylovForceModel>()
