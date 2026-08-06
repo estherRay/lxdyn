@@ -65,7 +65,17 @@ run = "sh tools/gdb.sh"
 
 [tasks."zig:build"]
 description = "Build xdyn and the test runner -> build/<target>/bin"
-run = "zig build"
+run = """
+sh tools/check-checkout.sh external/ssc/ssc/check_ssc_version.hpp
+zig build
+"""
+
+[tasks.build]
+description = "Build xdyn and run the 916 native unit tests"
+# Native only: the cross suites need `nix develop .#cross` for qemu and wine, so running them
+# here would fail for anyone in the default shell. Use `mise run cross` inside that shell.
+depends = ["zig:build"]
+run = "zig build test"
 
 [tasks.integration]
 description = "Run the 10 CLI integration tests against the zig build (no docker)"
@@ -78,6 +88,7 @@ make -C integration_tests/xdyn PYTHON="$PWD/build/venv/cli/bin/python" all
 [tasks."integration:setup"]
 description = "Python env + protobuf stubs for the gRPC/JSON tests"
 run = '''
+sh tools/check-checkout.sh external/interfaces/proto
 UV_PROJECT_ENVIRONMENT=build/venv/grpc uv sync --only-group test-grpc --python 3.10 --quiet
 mkdir -p external/interfaces/xdyngrpc/_proto
 touch external/interfaces/xdyngrpc/_proto/__init__.py
@@ -101,7 +112,6 @@ make -C integration_tests/json_tests
 
 [tasks."deploy:stage"]
 description = "Build the static musl binaries and stage them stripped into build/scratch/deploy/"
-depends = ["zig:build"]
 run = '''
 set -e
 for t in llvm-strip llvm-readelf; do
@@ -139,6 +149,7 @@ CONTAINER=${CONTAINER:-$(command -v podman > /dev/null 2>&1 && echo podman || ec
 description = "Build the xdyngrpc-python server image used by the deployment smoke test"
 run = '''
 CONTAINER=${CONTAINER:-$(command -v podman > /dev/null 2>&1 && echo podman || echo docker)}
+sh tools/check-checkout.sh external/interfaces/Dockerfile.python
 "$CONTAINER" build -f external/interfaces/Dockerfile.python -t localhost/xdyngrpc-python external/interfaces
 '''
 

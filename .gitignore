@@ -12,5 +12,6 @@ install
 *.swp
 __pycache__
 /.venv/
+/.direnv/
 
 /host-tools/

@@ -11,13 +11,9 @@ project](https://www.irt-jules-verne.fr/wp-content/uploads/bassin-numerique.pdf)
 
 (c) 2015-2022 [SIREHNA](https://www.sirehna.com/) & [Naval Group](https://www.naval-group.com/en/) for all subsequent versions.
 
-**Disclaimer**: [External documentation](https://sirehna_naval_group.gitlab.io/sirehna/xdyn/) and [internal documentation](https://sirehna.gitlab-pages.sirehna.com/xdyn/)
-was written for a French project, with
-French participants, therefore it is in French. It will be translated
-eventually. Also, please note that it is still a work-in-progress and, as such,
-can be incomplete. Despite our best efforts, inaccuracies may remain. However,
-the documentation will continue to evolve as new developments on xdyn are
-on-going.
+**Disclaimer**: the [user documentation](https://sirehna_naval_group.gitlab.io/sirehna/xdyn/)
+is written in French, is hosted by the upstream project, and is not part of this repository.
+It is incomplete in places and inaccuracies may remain.
 
 ## Getting Started
 
@@ -31,17 +27,9 @@ podman run --rm localhost/xdyn-deploy --help
 See [Running xdyn in a container](#running-xdyn-in-a-container) below. Either podman or
 docker works.
 
-Pre-built binaries of xdyn are also available:
-
-- [for Debian 11](https://gitlab.com/sirehna_naval_group/sirehna/xdyn/-/jobs/artifacts/master/download?job=build%3Adebian11-release)
-- [for Windows](https://gitlab.com/sirehna_naval_group/sirehna/xdyn/-/jobs/artifacts/master/download?job=build%3Awindows)
-
-There are many other ways of using xdyn, all of which are described
-in [the documentation](https://gitlab.com/sirehna_naval_group/sirehna/xdyn/-/jobs/artifacts/master/download?job=doc).
-
 The **environment models** implemented inside xdyn are described in detail [here](https://gitlab.com/sirehna_naval_group/sirehna/xdyn/-/blob/master/doc/user_fr/modeles_environnementaux.md)
 
-The **force models** implemented inside xdyn are described in detail [here](https://gitlab.com/sirehna_naval_group/sirehna/xdyn/-/blob/master/doc/user_fr/modeles_efforts_commandes_et_non_commandes.md)
+The **force models** implemented inside xdyn are described in detail [here](https://gitlab.com/sirehna_naval_group/sirehna/xdyn/-/blob/master/doc/user_fr/modeles_efforts.md)
 
 You can also learn how to use xdyn using the tutorials:
 
@@ -50,22 +38,24 @@ You can also learn how to use xdyn using the tutorials:
 - [Waves](https://gitlab.com/sirehna_naval_group/sirehna/xdyn/-/blob/master/doc/user_fr/tutorial_03.md)
 - [Propulsion](https://gitlab.com/sirehna_naval_group/sirehna/xdyn/-/blob/master/doc/user_fr/tutorial_06.md)
 - [gRPC wave model](https://gitlab.com/sirehna_naval_group/sirehna/xdyn/-/blob/master/doc/user_fr/tutorial_09.md)
-- [gRPC force model](https://gitlab.com/sirehna_naval_group/sirehna/xdyn/-/blob/master/doc/user_fr/tutorial_10.md)
-- [gRPC controller](https://gitlab.com/sirehna_naval_group/sirehna/xdyn/-/blob/master/doc/user_fr/tutorial_11.md)
 
 ## Building xdyn from source
-
-This section describes what you need to do if you wish to compile xdyn
-yourself.
-These instructions will get you a copy of the project up and running on your
-local machine for development and testing purposes. See deployment for notes on
-how to deploy the project on a live system.
 
 ### Prerequisites
 
 Building xdyn needs [Nix](https://nixos.org/download/) with flakes enabled. The
 `flake.nix` at the repository root pins zig and every tool, so nothing else has
 to be installed.
+
+Flakes are not on by default. Either add this to `~/.config/nix/nix.conf`:
+
+```
+experimental-features = nix-command flakes
+```
+
+or use [direnv](https://direnv.net/), which the committed `.envrc` sets up for you --
+`direnv allow` once per clone and entering the directory loads the devShell, so `nix develop`
+below becomes optional.
 
 The C++ dependencies — Boost, gRPC, HDF5, yaml-cpp, GoogleTest — are
 deliberately *not* system packages: they are built against zig's libc++ into a
@@ -84,7 +74,7 @@ downloading it, use `nix develop .#deps` -- that shell adds the cmake and ninja 
 need, and the emulators Boost's cross configure probes run -- then
 `mise run deps:x86_64-linux-gnu`. It takes hours.
 
-### Installing
+### Building
 
 ```bash
 zig build
@@ -103,7 +93,8 @@ zig build -Dtarget=aarch64-linux-musl
 ## Running the tests
 
 ```bash
-zig build test                 # 916 unit tests
+mise run build                 # build, then the 916 unit tests
+zig build test                 # the unit tests alone
 mise run integration           # 10 command-line scenarios
 mise run integration:grpc      # 8 gRPC + 1 JSON protocol scenarios
 mise run python:test           # 285 tests for the Python bindings
@@ -121,8 +112,6 @@ Please refer to [the Google Test documentation for details and other available
 options](https://github.com/google/googletest/blob/master/googletest/docs/advanced.md#running-a-subset-of-the-tests).
 
 ## Running xdyn
-
-### Running xdyn
 
 Build xdyn as above, then run it from the build tree:
 
@@ -234,10 +223,6 @@ to use GDB, refer to [the official GDB
 documentation](https://www.gnu.org/software/gdb/).
 
 
-## Deployment
-
-Add additional notes about how to deploy this on a live system.
-
 ## Built with
 
 * [Zig](https://ziglang.org/) - `zig cc` is the compiler and `build.zig` the build system, for Linux, Windows and aarch64 alike from a single host.
@@ -248,8 +233,6 @@ Add additional notes about how to deploy this on a live system.
 * [yaml-cpp](https://github.com/jbeder/yaml-cpp) - To parse the input files.
 * [HDF5](https://support.hdfgroup.org/products/hdf5_tools/index.html) - To store the outputs.
 * [Eigen](https://eigen.tuxfamily.org/index.php?title=Main_Page) - For matrix manipulations.
-* [Pandoc](https://pandoc.org/) - To generate the documentation.
-* [Pweave](https://mpastell.com/pweave/) - To generate the tutorials.
 * [SSC](https://gitlab.com/sirehna_naval_group/sirehna/ssc) - For websockets, units decoding, interpolations, kinematics, CSV file reading and exception handling.
 
 ## Contributing
