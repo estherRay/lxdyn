@@ -24,7 +24,11 @@ ssc::kinematics::EulerAngles convert(const double qr, const double qi, const dou
 
 int main(int argc, char** argv)
 {
-    if (argc != 5) std::cerr << "Need exactly 4 arguments (qr, qi, qj, qk): received " << argc-1 << std::endl;
+    if (argc != 5)
+    {
+        std::cerr << "Need exactly 4 arguments (qr, qi, qj, qk): received " << argc-1 << std::endl;
+        return 1;
+    }
 
     const double qr = std::atof(argv[1]);
     const double qi = std::atof(argv[2]);

@@ -5,7 +5,7 @@
  *      Author: cady
  */
 
-#include "EmitFMIXml.hpp"
+#include "xdyn/fmi/EmitFMIXml.hpp"
 #include "xdyn/get_git_sha/get_git_sha.h"
 
 #include <ssc/check_ssc_version.hpp>
