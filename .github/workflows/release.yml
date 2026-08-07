@@ -1,0 +1,76 @@
+name: Release image
+
+on:
+  push:
+    tags: ["[0-9][0-9].[0-9]*"]
+  workflow_dispatch:
+    inputs:
+      version:
+        description: "Registry tag to publish under. Defaults to the git tag on HEAD, which a branch does not have."
+        required: false
+        type: string
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+  packages: write
+
+env:
+  NIX_CONFIG: experimental-features = nix-command flakes
+  MISE_TRUSTED_CONFIG_PATHS: ${{ github.workspace }}
+  # The runner has both, and podman would otherwise win the auto-detection in mise.toml --
+  # but `docker login` below writes to docker's credential store, not podman's.
+  CONTAINER: docker
+
+jobs:
+  image:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          # The version is `git describe`, and the default checkout fetches no tags at all,
+          # so without this every image would be published as the fallback commit sha.
+          fetch-depth: 0
+      - uses: cachix/install-nix-action@v31
+
+      - name: Dependency closures
+        run: |
+          nix develop --command mise run deps:fetch x86_64-linux-gnu
+          nix develop --command mise run deps:fetch x86_64-linux-musl
+      - name: Submodules
+        run: nix develop --command mise run setup
+
+      - name: Build the image
+        run: nix develop --command mise run deploy:image
+
+      # Steps 1 and 2 of integration_tests/deploy/run.sh, the two that are about the image.
+      # Its step 3 needs a native build of xdyn-for-me and the gRPC venv, and a second full
+      # zig cache next to two unpacked closures is what runs a 14 GB runner out of disk. The
+      # protocol is covered natively by ci.yml, on every push; what is left to prove here is
+      # that the artifact about to reach a registry starts and simulates.
+      - name: Smoke test
+        run: |
+          mkdir -p build/scratch/release-smoke
+          cd build/scratch/release-smoke
+          docker run --rm localhost/lxdyn --help | grep -q USAGE
+          docker run --rm -u "$(id -u):$(id -g)" -v "$PWD:/data" \
+              --entrypoint /usr/bin/generate_yaml_example localhost/lxdyn .
+          docker run --rm -u "$(id -u):$(id -g)" -v "$PWD:/data" localhost/lxdyn \
+              tutorial_01_falling_ball.yml --dt 0.1 --tend 1 -o out.csv
+          [ -s out.csv ] || { echo "the image produced no output on a bind mount"; exit 1; }
+          [ -r out.csv ] || { echo "output is not readable by the invoking user"; exit 1; }
+          echo "out.csv: $(wc -l < out.csv) lines"
+
+      - name: Log in to ghcr.io
+        run: |
+          echo "${{ secrets.GITHUB_TOKEN }}" \
+              | docker login ghcr.io -u "${{ github.actor }}" --password-stdin
+
+      - name: Push
+        # Empty on a tag push, which is the case deploy:publish resolves for itself.
+        env:
+          VERSION: ${{ inputs.version }}
+        run: nix develop --command mise run deploy:publish

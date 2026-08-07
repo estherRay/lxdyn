@@ -43,6 +43,7 @@ mise run integration           # CLI scenarios
 mise run integration:grpc      # gRPC and JSON protocol scenarios
 mise run deploy:image          # container image
 mise run deploy:test           # deployment smoke test
+mise run deploy:publish        # push it to ghcr.io, from a tagged and clean tree only
 mise run python:test           # binding tests on 3.10
 mise run python:matrix         # on 3.10, 3.13 and 3.15
 mise run python:lint           # ruff check

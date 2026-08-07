@@ -138,11 +138,41 @@ description = "Build the lxdyn deploy image from the Containerfile"
 depends = ["deploy:stage"]
 run = '''
 CONTAINER=${CONTAINER:-$(command -v podman > /dev/null 2>&1 && echo podman || echo docker)}
-"$CONTAINER" build -f Containerfile -t localhost/lxdyn .
-# `images`, not `image inspect --format`: mise renders task scripts through Tera, so a
-# Go-template size expression is parsed as a mise expression and the task never reaches the
-# shell. That applies to comments too -- Tera does not know what a shell comment is.
+# Same version idiom as python:build, so the wheel and the image agree on what a release is.
+"$CONTAINER" build -f Containerfile \
+    --build-arg VERSION="$(git describe --abbrev=0 --tag --always | cut -f2 -dv)" \
+    --build-arg REVISION="$(git rev-parse HEAD)" \
+    -t localhost/lxdyn .
+# `images`, not `image inspect --format`: mise renders task scripts through Tera, so a Go
+# template is parsed as a mise expression and the task never reaches the shell.
 "$CONTAINER" images localhost/lxdyn
+'''
+
+[tasks."deploy:publish"]
+description = "Push the deploy image to ghcr.io/naval-group/lxdyn under the current tag"
+depends = ["deploy:image"]
+run = '''
+set -e
+CONTAINER=${CONTAINER:-$(command -v podman > /dev/null 2>&1 && echo podman || echo docker)}
+REGISTRY=${REGISTRY:-ghcr.io/naval-group/lxdyn}
+
+# --exact-match, not the --abbrev=0 idiom used above: that one reports 26.8 for every commit
+# after 26.8, so it would republish the release from an arbitrary tree.
+VERSION=${VERSION:-}
+if [ -z "$VERSION" ]; then
+    VERSION=$(git describe --exact-match --tags 2>/dev/null | cut -f2 -dv) || {
+        echo "refusing to publish: HEAD is not tagged, so there is no version to publish it as" >&2
+        echo "  git tag -s 26.9 -m 26.9 && git push fork 26.9   (or pass VERSION=)" >&2
+        exit 1
+    }
+fi
+git diff --quiet HEAD || { echo "refusing to publish: the working tree is dirty" >&2; exit 1; }
+
+"$CONTAINER" tag localhost/lxdyn "$REGISTRY:$VERSION"
+"$CONTAINER" tag localhost/lxdyn "$REGISTRY:latest"
+"$CONTAINER" push "$REGISTRY:$VERSION"
+"$CONTAINER" push "$REGISTRY:latest"
+echo "pushed $REGISTRY:$VERSION and $REGISTRY:latest"
 '''
 
 [tasks."deploy:server-image"]
