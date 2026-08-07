@@ -1,37 +1,58 @@
-# xdyn
+# lxdyn
 
-xdyn is a lightweight time-domain ship simulator modelling the dynamic behaviour of a ship at sea, with its actuators, including some non-linear aspects of that behaviour and featuring a customizable maneuvring model.
-It simulates the mechanical behaviour of a solid body in a fluid environment by
-solving Newton's second law of motion, taking hydrodynamic forces into account.
+lxdyn is the LOTUSim fork of xdyn, a lightweight time-domain ship simulator modelling the dynamic behaviour of a ship at sea, with its actuators, including some non-linear aspects of that behaviour and featuring a customizable maneuvring model.
+It simulates the mechanical behaviour of a solid body in a fluid environment by solving Newton's second law of motion, taking hydrodynamic forces into account.
 
-It was developed by SIREHNA through both self-funded projects and various collaborative projects, including the IRT Jules Verne's ["Bassin Numérique"
-project](https://www.irt-jules-verne.fr/wp-content/uploads/bassin-numerique.pdf).
+The name is the only thing the fork renames. The executables, the Python module and the C++ library are all still called `xdyn`, because that is what the input files, the tutorials and the upstream documentation refer to.
+
+It was developed by SIREHNA through both self-funded projects and various collaborative projects, including the IRT Jules Verne's ["Bassin Numérique" project](https://www.irt-jules-verne.fr/wp-content/uploads/bassin-numerique.pdf).
 
 (c) 2014-2015, [IRT Jules Verne](https://www.irt-jules-verne.fr/), [SIREHNA](https://www.sirehna.com/), [Naval Group](https://www.naval-group.com/en/), [Bureau Veritas](https://www.bureauveritas.fr/), [Hydrocean](https://marine-offshore.bureauveritas.com/bvsolutions), [STX France](https://chantiers-atlantique.com/en/), [LHEEA](https://lheea.ec-nantes.fr/) for the initial version.
 
 (c) 2015-2022 [SIREHNA](https://www.sirehna.com/) & [Naval Group](https://www.naval-group.com/en/) for all subsequent versions.
 
-**Disclaimer**: the [user documentation](https://sirehna_naval_group.gitlab.io/sirehna/xdyn/)
-is written in French, is hosted by the upstream project, and is not part of this repository.
-It is incomplete in places and inaccuracies may remain.
+**Disclaimer**: the [user documentation](https://sirehna_naval_group.gitlab.io/sirehna/xdyn/) is written in French, is hosted by the upstream project, and is not part of this repository. It is incomplete in places and inaccuracies may remain.
 
-## Getting Started
+## Using lxdyn
 
-The easiest way to run xdyn is from a container image, built from the `Containerfile` at the
-repository root with `mise run deploy:image`:
+You need [podman](https://podman.io/). Nothing else: no compiler, no toolchain, no Python.
 
 ```bash
-podman run --rm localhost/xdyn-deploy --help
+podman run --rm ghcr.io/naval-group/lxdyn --help
 ```
 
-See [Running xdyn in a container](#running-xdyn-in-a-container) below. Either podman or
-docker works.
+### Running a simulation
 
-The **environment models** implemented inside xdyn are described in detail [here](https://gitlab.com/sirehna_naval_group/sirehna/xdyn/-/blob/master/doc/user_fr/modeles_environnementaux.md)
+lxdyn reads a YAML file and writes its results next to it, so the container needs your current directory mounted. Define this once and the rest of the page is readable:
 
-The **force models** implemented inside xdyn are described in detail [here](https://gitlab.com/sirehna_naval_group/sirehna/xdyn/-/blob/master/doc/user_fr/modeles_efforts.md)
+```bash
+alias lxdyn='podman run --rm --userns=keep-id -v "$PWD:/data" ghcr.io/naval-group/lxdyn'
+```
 
-You can also learn how to use xdyn using the tutorials:
+The three flags are not decoration. `-v "$PWD:/data"` mounts your working directory over the image's `/data`, without which the results are written inside the container and disappear with it. `--userns=keep-id` maps your user into the container, without which the output files come out owned by an unrelated high UID that you then cannot delete. `--rm` deletes the container, not the image, once it exits.
+
+Now run a simulation:
+
+```bash
+lxdyn my_simulation.yml --dt 0.1 --tend 10
+```
+
+All available options are listed in [the documentation](https://sirehna_naval_group.gitlab.io/sirehna/xdyn/#ligne-de-commande).
+
+### The tutorials
+
+The tutorial input files are generated rather than stored, so that they cannot drift away from the code that reads them. The generators ship inside the image:
+
+```bash
+mkdir -p demos && cd demos
+podman run --rm --userns=keep-id -v "$PWD:/data" \
+    --entrypoint /usr/bin/generate_yaml_example ghcr.io/naval-group/lxdyn .
+lxdyn tutorial_01_falling_ball.yml --dt 0.1 --tend 1 -o tsv
+```
+
+That writes `falling_ball.csv`, `.h5` and `.json` beside itself. `-o tsv` prints the results to the terminal instead.
+
+The tutorials themselves are documented upstream:
 
 - [Falling ball](https://gitlab.com/sirehna_naval_group/sirehna/xdyn/-/blob/master/doc/user_fr/tutorial_01.md)
 - [Hydrostatic](https://gitlab.com/sirehna_naval_group/sirehna/xdyn/-/blob/master/doc/user_fr/tutorial_02.md)
@@ -39,13 +60,29 @@ You can also learn how to use xdyn using the tutorials:
 - [Propulsion](https://gitlab.com/sirehna_naval_group/sirehna/xdyn/-/blob/master/doc/user_fr/tutorial_06.md)
 - [gRPC wave model](https://gitlab.com/sirehna_naval_group/sirehna/xdyn/-/blob/master/doc/user_fr/tutorial_09.md)
 
-## Building xdyn from source
+The **environment models** are described in detail [here](https://gitlab.com/sirehna_naval_group/sirehna/xdyn/-/blob/master/doc/user_fr/modeles_environnementaux.md), and the **force models** [here](https://gitlab.com/sirehna_naval_group/sirehna/xdyn/-/blob/master/doc/user_fr/modeles_efforts.md).
+
+### What the image is
+
+`FROM scratch`, holding nothing but the binaries. They are built for `x86_64-linux-musl`, which links libc statically on top of the libc++ and third-party libraries that were already static, so there is no loader to find and nothing underneath them to provide.
+
+The consequence worth knowing: there is no shell in the image, so `podman run --entrypoint sh` is not a way to look around, and there are no CA certificates.
+
+### Using docker instead
+
+docker works, with one difference: it has no `--userns=keep-id`, so use `-u $(id -u):$(id -g)` to get output files owned by you.
+
+```bash
+alias lxdyn='docker run --rm -u $(id -u):$(id -g) -v "$PWD:/data" ghcr.io/naval-group/lxdyn'
+```
+
+## Building from source
+
+Everything below is for developing lxdyn. If you only want to run simulations, the section above is all you need.
 
 ### Prerequisites
 
-Building xdyn needs [Nix](https://nixos.org/download/) with flakes enabled. The
-`flake.nix` at the repository root pins zig and every tool, so nothing else has
-to be installed.
+[Nix](https://nixos.org/download/) with flakes enabled, and nothing else. The `flake.nix` at the repository root pins zig, mise, uv and every other tool the build needs, so no compiler and no C++ library has to be installed on the host.
 
 Flakes are not on by default. Either add this to `~/.config/nix/nix.conf`:
 
@@ -53,26 +90,16 @@ Flakes are not on by default. Either add this to `~/.config/nix/nix.conf`:
 experimental-features = nix-command flakes
 ```
 
-or use [direnv](https://direnv.net/), which the committed `.envrc` sets up for you --
-`direnv allow` once per clone and entering the directory loads the devShell, so `nix develop`
-below becomes optional.
+or use [direnv](https://direnv.net/), which the committed `.envrc` sets up for you. `direnv allow` once per clone, and entering the directory loads the devShell, so the `nix develop` below becomes optional.
 
-The C++ dependencies — Boost, gRPC, HDF5, yaml-cpp, GoogleTest — are
-deliberately *not* system packages: they are built against zig's libc++ into a
-closure of their own, so the build does not depend on what the host distribution
-ships. `tools/deps/` builds one from source in a few hours, or you can download
-a prebuilt one in about 35 MB.
+The C++ dependencies, Boost, gRPC, HDF5, yaml-cpp and GoogleTest, are deliberately *not* system packages: they are built against zig's libc++ into a closure of their own, so the build does not depend on what the host distribution ships. You can download a prebuilt closure in about 35 MB, or build one from source in a few hours.
 
 ```bash
 nix develop
 mise run bootstrap             # submodules, SSC umbrella headers, and the closure (~35 MB)
 ```
 
-`bootstrap` is `mise run setup` plus `mise run deps:fetch x86_64-linux-gnu`, and it is
-re-runnable: it leaves an existing closure alone. To build a closure from source instead of
-downloading it, use `nix develop .#deps` -- that shell adds the cmake and ninja the recipes
-need, and the emulators Boost's cross configure probes run -- then
-`mise run deps:x86_64-linux-gnu`. It takes hours.
+`bootstrap` is `mise run setup` plus `mise run deps:fetch x86_64-linux-gnu`, and it is re-runnable: it leaves an existing closure alone. To build a closure from source instead of downloading it, use `nix develop .#deps`, the shell that adds the cmake and ninja the recipes need and the emulators Boost's cross configure probes run, then `mise run deps:x86_64-linux-gnu`. It takes hours.
 
 ### Building
 
@@ -80,8 +107,13 @@ need, and the emulators Boost's cross configure probes run -- then
 zig build
 ```
 
-The binaries can then be found in `build/<target>/bin` — `build/x86_64-linux-gnu/bin`
-on a typical Linux host. Codegen runs as part of the build; there is no configure step.
+The binaries can then be found in `build/<target>/bin`, so `build/x86_64-linux-gnu/bin` on a typical Linux host. Codegen runs as part of the build; there is no configure step, and no separate install step either.
+
+Run one straight from the build tree. The executable is `xdyn`:
+
+```bash
+$(sh tools/build-dir.sh)/bin/xdyn my_simulation.yml --dt 0.1 --tend 10
+```
 
 Cross-compiling needs nothing but the matching closure:
 
@@ -90,138 +122,21 @@ mise run deps:fetch aarch64-linux-musl
 zig build -Dtarget=aarch64-linux-musl
 ```
 
-## Running the tests
+The supported targets are `x86_64-linux-gnu`, `x86_64-linux-musl`, `aarch64-linux-musl` and `x86_64-windows-gnu`.
 
-```bash
-mise run build                 # build, then the 916 unit tests
-zig build test                 # the unit tests alone
-mise run integration           # 10 command-line scenarios
-mise run integration:grpc      # 8 gRPC + 1 JSON protocol scenarios
-mise run python:test           # 285 tests for the Python bindings
-```
+### Building the container image
 
-The unit tests are written using Google test. These are both end-to-end tests
-and unit tests. The end-to-end tests can be a bit long, so you can disable them
-with a Google Test filter by running the binary directly:
-
-```bash
-$(sh tools/build-dir.sh)/bin/run_all_tests --gtest_filter=-'*LONG*'
-```
-
-Please refer to [the Google Test documentation for details and other available
-options](https://github.com/google/googletest/blob/master/googletest/docs/advanced.md#running-a-subset-of-the-tests).
-
-## Running xdyn
-
-Build xdyn as above, then run it from the build tree:
-
-```bash
-$(sh tools/build-dir.sh)/bin/xdyn <yaml file> [xdyn options]
-```
-
-All options can be found in [the documentation](https://sirehna_naval_group.gitlab.io/sirehna/xdyn/#ligne-de-commande).
-
-The tutorials are not in the repository — they are generated, so that the input
-files and the code that reads them cannot drift apart. To run the first
-[tutorial](https://gitlab.com/sirehna_naval_group/sirehna/xdyn/-/blob/master/doc/user_fr/tutorial_01.md):
-
-```bash
-BIN=$(sh tools/build-dir.sh)/bin
-mkdir -p demos && cd demos
-"$BIN/generate_yaml_example" . && "$BIN/generate_stl_examples" .
-"$BIN/xdyn" tutorial_01_falling_ball.yml --dt 0.1 --tend 1
-```
-
-That prints nothing: each tutorial names its own outputs, so this one writes
-`falling_ball.csv`, `.h5` and `.json` beside itself. Add `-o tsv` to get the
-results on the terminal instead.
-
-There is no separate install step: `zig build` writes the executables straight
-into the build tree, and the container image is built by copying them.
-
-### Running xdyn in a container
-
-The image is built from the `Containerfile` at the repository root. It does no compiling —
-`mise run deploy:image` stages already-built, already-tested binaries into `build/scratch/deploy/`
-first, so the image ships exactly what the test suite ran:
+`mise run deploy:image` does no compiling. It stages already-built, already-tested binaries into `build/scratch/deploy/` first, so the image ships exactly what the test suite ran:
 
 ```bash
 mise run deploy:image
 ```
 
-There is no `.deb` and no package manager step. The binaries link libc++ and every
-third-party library statically, and are built for a glibc 2.28 floor, so the image is a
-`COPY` onto a slim base.
+`mise run deploy:test` is the smoke test for it: the image starts, it simulates against a bind mount with readable output, and a containerised gRPC server with a published port is reachable from a native client.
 
-To run it — `podman` reads the `Containerfile` by name, `docker` needs `-f`, and both take
-the same arguments afterwards:
+### Tests and debugging
 
-```bash
-podman run --rm --userns=keep-id -v "$PWD:/data" localhost/xdyn-deploy <yaml file> [xdyn options]
-```
-
-- `--rm` deletes the container (not the image) after exit
-- `--userns=keep-id` maps your UID into the container, so files xdyn writes come out owned
-  by you. **This is podman-specific**; under docker use `-u $(id -u):$(id -g)` instead.
-  Rootless podman already maps your UID to root inside the container, so `-u` there lands on
-  a subuid and the output ends up owned by a stray high UID
-- `-v "$PWD:/data"` mounts the current directory over the image's `/data` working directory,
-  which is where xdyn writes its `.h5`/`.csv`/`.json`
-
-The tutorials are not baked into the image. The generators are, so you get them with:
-
-```bash
-podman run --rm --userns=keep-id -v "$PWD:/data" \
-    --entrypoint /usr/bin/generate_yaml_example localhost/xdyn-deploy .
-podman run --rm --userns=keep-id -v "$PWD:/data" \
-    localhost/xdyn-deploy tutorial_01_falling_ball.yml --dt 0.1 --tend 1 -o tsv
-```
-
-`mise run deploy:test` is the smoke test for all of this: it checks that the image starts,
-that it simulates against a bind mount with readable output, and that a containerised gRPC
-server with a published port is reachable from a native client.
-
-## Debugging
-
-Build a debug version first. This is `-O0 -g` for xdyn's own code only; the
-dependency closure stays optimized, which is what you want — stepping into
-Boost is rarely the point.
-
-```bash
-zig build -Ddebug
-```
-
-### Valgrind
-
-The memory analyzer [Valgrind](https://valgrind.org/) can be used during
-development to check for memory leaks and use of uninitialized values:
-
-```bash
-valgrind $(sh tools/build-dir.sh)-debug/bin/run_all_tests
-```
-
-Any [flag `run_all_tests` accepts](https://google.github.io/googletest/advanced.html#running-test-programs-advanced-options)
-can be passed through, in particular filtering:
-
-```bash
-valgrind $(sh tools/build-dir.sh)-debug/bin/run_all_tests --gtest_filter='Gravity*'
-```
-
-### GDB
-
-`mise run gdb` starts GDB on one of the debug binaries built above, with the
-repository's `.gdbinit` loaded — GDB otherwise declines to auto-load it, and
-the helpers it defines would silently not be there:
-
-```bash
-mise run gdb -- xdyn tutorial_01_falling_ball.yml
-mise run gdb -- run_all_tests --gtest_filter='Gravity*'
-```
-
-This will open a GDB prompt. To close it, press Ctrl+D. For more details on how
-to use GDB, refer to [the official GDB
-documentation](https://www.gnu.org/software/gdb/).
-
+See [CONTRIBUTING.md](CONTRIBUTING.md), which covers the unit and integration suites, the cross suites under qemu and wine, valgrind and GDB.
 
 ## Built with
 
@@ -233,31 +148,19 @@ documentation](https://www.gnu.org/software/gdb/).
 * [yaml-cpp](https://github.com/jbeder/yaml-cpp) - To parse the input files.
 * [HDF5](https://support.hdfgroup.org/products/hdf5_tools/index.html) - To store the outputs.
 * [Eigen](https://eigen.tuxfamily.org/index.php?title=Main_Page) - For matrix manipulations.
-* [SSC](https://gitlab.com/sirehna_naval_group/sirehna/ssc) - For websockets, units decoding, interpolations, kinematics, CSV file reading and exception handling.
+* [SSC](https://github.com/naval-group/scientific_computing) - For websockets, units decoding, interpolations, kinematics, CSV file reading and exception handling.
 
 ## Contributing
 
-Please read [CONTRIBUTING.md](CONTRIBUTING.md) for details on how to submit
-issues & pull requests to xdyn.
-Our code of conduct is the [Contributor Covenant](CODE_OF_CONDUCT.md) (original
-version available
-[here](https://www.contributor-covenant.org/version/1/4/code-of-conduct) ).
+Please read [CONTRIBUTING.md](CONTRIBUTING.md) for how to submit issues and pull requests, and for how to run the test suite and debug the code. Our code of conduct is the [Contributor Covenant](CODE_OF_CONDUCT.md) (original version available [here](https://www.contributor-covenant.org/version/1/4/code-of-conduct)).
 
 ## Versioning
 
-We use [SemVer](http://semver.org/) for versioning. For the versions available, see the [tags on this repository](https://gitlab.com/sirehna_naval_group/sirehna/xdyn/-/tags).
+Versions are calendar-based, `YY.M` with no leading zero on the month, so `26.8` is the August 2026 release. The version is read from the nearest git tag at build time, and reported by `xdyn --version`. For the versions available, see the [tags on this repository](https://github.com/naval-group/lxdyn/tags).
 
 ## Authors
 
-The main contributors to this project are:
-
-* [Charles-Edouard CADY](https://gitlab.com/CharlesEdouardCady_SIREHNA)
-* [Guillaume JACQUENOT](https://gitlab.com/GuillaumeJacquenot)
-* [Léa LINCKER](https://gitlab.com/llincker)
-* [Moran CHARLOU](https://gitlab.com/mcharlou)
-
-
-See also the [full list of contributors](https://gitlab.com/sirehna_naval_group/sirehna/xdyn/-/blob/master/contributors) who took part in this project.
+The main contributors to the original project are Charles-Edouard Cady, Guillaume Jacquenot, Léa Lincker and Moran Charlou. The full list is in the [contributor graph](https://github.com/naval-group/lxdyn/graphs/contributors).
 
 ## License
 
