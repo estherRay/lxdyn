@@ -6,7 +6,7 @@ name: CI
 
 on:
   push:
-    branches: [zig-toolchain, master]
+    branches: [master, lotusim-features]
   pull_request:
   workflow_dispatch:
 
