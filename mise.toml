@@ -134,15 +134,15 @@ du -sh build/scratch/deploy
 '''
 
 [tasks."deploy:image"]
-description = "Build the xdyn deploy image from the Containerfile"
+description = "Build the lxdyn deploy image from the Containerfile"
 depends = ["deploy:stage"]
 run = '''
 CONTAINER=${CONTAINER:-$(command -v podman > /dev/null 2>&1 && echo podman || echo docker)}
-"$CONTAINER" build -f Containerfile -t localhost/xdyn-deploy .
+"$CONTAINER" build -f Containerfile -t localhost/lxdyn .
 # `images`, not `image inspect --format`: mise renders task scripts through Tera, so a
 # Go-template size expression is parsed as a mise expression and the task never reaches the
 # shell. That applies to comments too -- Tera does not know what a shell comment is.
-"$CONTAINER" images localhost/xdyn-deploy
+"$CONTAINER" images localhost/lxdyn
 '''
 
 [tasks."deploy:server-image"]

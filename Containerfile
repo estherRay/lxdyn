@@ -1,4 +1,4 @@
-# xdyn deploy image. Build it with `mise run deploy:image`, which stages stripped binaries
+# lxdyn deploy image. Build it with `mise run deploy:image`, which stages stripped binaries
 # into build/scratch/deploy/ first — this file deliberately does no compiling, so the image ships the
 # same binaries that were tested, not a second build of them.
 #
@@ -51,7 +51,7 @@ COPY build/scratch/deploy/ /usr/bin/
 # /data, because xdyn writes its .h5/.csv/.json next to the cwd and the container's own
 # filesystem is the wrong place for that. WORKDIR is also the only thing that creates the
 # directory — there is no mkdir in this image. Mount over it:
-#   podman run --rm --userns=keep-id -v "$PWD:/data" xdyn tutorial_01_falling_ball.yml ...
+#   podman run --rm --userns=keep-id -v "$PWD:/data" lxdyn tutorial_01_falling_ball.yml ...
 WORKDIR /data
 
 ENTRYPOINT ["/usr/bin/xdyn"]

@@ -39,9 +39,9 @@ fi
 USERNS=
 [ "${CONTAINER##*/}" = podman ] && USERNS=--userns=keep-id
 
-IMAGE=${IMAGE:-localhost/xdyn-deploy}
+IMAGE=${IMAGE:-localhost/lxdyn}
 SERVER_IMAGE=${SERVER_IMAGE:-localhost/xdyngrpc-python}
-NAME=xdyn-deploy-smoke-$$
+NAME=lxdyn-deploy-smoke-$$
 
 xdyn_pid=
 # SIGTERM then SIGKILL, exactly like tools/scenario.sh's _kill, and for a reason learned the
