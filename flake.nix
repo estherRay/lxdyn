@@ -13,6 +13,22 @@
     src-hdf5       = { url = "github:HDFGroup/hdf5/hdf5_1.14.6";      flake = false; };
     src-grpc       = { url = "git+https://github.com/grpc/grpc?ref=refs/tags/v1.78.1&submodules=1"; flake = false; };
     src-boost      = { url = "tarball+https://archives.boost.io/release/1.89.0/source/boost_1_89_0.tar.bz2"; flake = false; };
+
+    # The submodules, pinned here rather than fetched with `?submodules=1`. Nix fetches
+    # submodules *recursively* and SSC carries a gitlink to ThirdParty/eigen, a repository that
+    # no longer exists -- a plain clone never trips on it because nothing initialises it. These
+    # revisions are .gitmodules' pins and have to be bumped with them; `git submodule status`
+    # prints the four that must match.
+    src-ssc         = { url = "github:naval-group/scientific_computing/690f80f6a065dbea65d9423d03c96b3a50ebb1b5"; flake = false; };
+    src-interfaces  = { url = "github:naval-group/interfaces/5a3b79e3cc6c2a5c29f81d0316c0daa3d11f40d5";           flake = false; };
+    src-websocketpp = { url = "github:LocutusOfBorg/websocketpp/67405e1ab225f20835e4086f89b54b805dd43bae";        flake = false; };
+    src-stb         = { url = "github:nothings/stb/2c980bb59875b0d32144a71867fbdebb2f77cd20";                     flake = false; };
+
+    # SSC's own submodule, so `git submodule status` inside external/ssc prints this pin.
+    src-f2c = {
+      url = "git+https://gitlab.com/sirehna_naval_group/ThirdParty/f2c.git?ref=refs/tags/v1.0.0&rev=844703f7eff4c533bb147931bffe914b3345ef4d";
+      flake = false;
+    };
   };
 
   outputs = { self, nixpkgs, ... }@inputs:
@@ -139,8 +155,80 @@
           emulators = [ pkgs.wine64 ];
         };
       };
+
+      # ===================================================================================
+      # xdyn itself, for consumers that want the binaries rather than a shell — LOTUSim
+      # runs xdyn-for-cs as one websocket physics server per vessel.
+      #
+      # x86_64-linux-musl, the target the deploy image already uses: what comes out is
+      # static, so a consumer needs neither a loader nor the closure at runtime.
+      #
+      # `src = self` is the repository without its submodules, so the four pinned above are
+      # copied into external/ before the build; all four are compiled in.
+      # ===================================================================================
+      xdyn = pkgs.stdenvNoCC.mkDerivation {
+        pname = "xdyn";
+        version = "26.8.0";
+        src = self;
+
+        # No cmake or ninja: `zig build` invokes neither. The closure is already built.
+        nativeBuildInputs = [ pkgs.zig pkgs.llvm pkgs.removeReferencesTo ];
+
+        # Same reason as the closures: fixup would strip a foreign-target artifact with
+        # binutils, and there is no interpreter for patchelf to rewrite.
+        dontFixup = true;
+
+        buildPhase = ''
+          runHook preBuild
+          export HOME=$TMPDIR/home ZIG_GLOBAL_CACHE_DIR=$TMPDIR/zig XDG_CACHE_HOME=$TMPDIR/cache
+          mkdir -p $HOME $ZIG_GLOBAL_CACHE_DIR $XDG_CACHE_HOME
+
+          # -T: a git source materialises each gitlink as an empty dir that plain cp nests inside.
+          # Writable: codegen runs generate_module_header.sh inside external/ssc/ssc.
+          cp -rT ${inputs.src-ssc}         external/ssc
+          cp -rT ${inputs.src-interfaces}  external/interfaces
+          cp -rT ${inputs.src-websocketpp} external/websocketpp
+          cp -rT ${inputs.src-stb}         external/stb
+          chmod -R u+w external
+
+          # SSC's own submodule: the github fetcher stops at SSC's tree and never descends.
+          cp -rT ${inputs.src-f2c} external/ssc/ssc/f2c
+          chmod -R u+w external/ssc/ssc/f2c
+
+          # -Dgit-sha, because headSha() shells out to git against a .git the sandbox has not
+          # got. -Deigen, because the pkg-config probe needs a setup hook this stdenv has not
+          # got — eigen is header-only, so it is not a bucket-3 dependency.
+          zig build \
+            -Dtarget=x86_64-linux-musl \
+            -Ddeps=${closures.libcxx-deps-x86_64-linux-musl} \
+            -Ddeps-host=${hostTools} \
+            -Deigen=${pkgs.eigen_5}/include/eigen3 \
+            -Dgit-sha=${self.rev or self.dirtyRev or "unknown"} \
+            --prefix $out
+          runHook postBuild
+        '';
+
+        # zig build --prefix already installed into $out.
+        installPhase = "runHook preInstall; runHook postInstall";
+
+        postInstall = ''
+          # zig build installs 14, one of them a `gz` that shadows Gazebo's on a consumer's PATH.
+          find $out/bin -mindepth 1 \
+            -not -name xdyn -not -name xdyn-for-cs -not -name xdyn-for-me -delete
+
+          # llvm-strip, not fixup's binutils: these are foreign-target and static. Debug info
+          # also carries the closure's store paths in .debug_str, making them runtime references.
+          llvm-strip --strip-debug $out/bin/* $out/lib/*.a
+
+          # Boost bakes header paths into assert messages, so .rodata keeps the closure's store
+          # path even after stripping. Left alone it becomes a 5.4 GB runtime dependency.
+          remove-references-to -t ${closures.libcxx-deps-x86_64-linux-musl} $out/bin/* $out/lib/*.a
+        '';
+
+        meta.description = "xdyn simulator binaries, libc++, static x86_64-linux-musl";
+      };
     in {
-      packages.${system} = closures;
+      packages.${system} = closures // { inherit xdyn; };
 
       devShells.${system} = rec {
         # mkShellNoCC, not mkShell: mkShell's cc-wrapper exports CPATH, which zig cc honours --
