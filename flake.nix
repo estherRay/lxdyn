@@ -169,7 +169,18 @@
       xdyn = pkgs.stdenvNoCC.mkDerivation {
         pname = "xdyn";
         version = "26.8.0";
-        src = self;
+
+        # Deny-list, so a new source directory still builds. None of this reaches zig, and
+        # leaving it in makes a CI or README edit publish a fresh 32 MB xdyn.
+        src = pkgs.lib.cleanSourceWith {
+          name = "xdyn-source";
+          src = self;
+          filter = path: _type:
+            let rel = pkgs.lib.removePrefix "${self}/" path; in
+            !(pkgs.lib.hasPrefix ".github" rel)
+            && !(pkgs.lib.hasPrefix "doxygen" rel)
+            && !(pkgs.lib.hasSuffix ".md" rel);
+        };
 
         # No cmake or ninja: `zig build` invokes neither. The closure is already built.
         nativeBuildInputs = [ pkgs.zig pkgs.llvm pkgs.removeReferencesTo ];
