@@ -86,6 +86,11 @@ class Body
         */
         BodyStates get_states() const;
 
+         /** \brief Returns the index of the first state of this body
+         *  \returns The index of the first state of this body in the state vector
+         */
+        size_t get_idx() const { return idx; }
+
         /** \brief Use SurfaceElevation to compute wave height & update accordingly
          */
         virtual void update_intersection_with_free_surface(

@@ -260,6 +260,29 @@ void Sim::output(const StateType& x, Observer& obs, const double t, const std::v
         obs.write_before_solver_step(dF(5),DataAddressing(std::vector<std::string>{"efforts",body->get_name(),"blocked states",body->get_name(),"Mz"},std::string("Mz(blocked states,")+body->get_name()+","+body->get_name()+")"));
     }
     pimpl->env.feed(obs, t, pimpl->bodies, normalized_x);
+
+    // output water currents acting on each body in NED
+    for (const auto& body : pimpl->bodies){
+        const auto body_name = body->get_name();
+        const size_t idx = body->get_idx();
+
+        // normalized_x is a confusing name so making it clear
+        const double x_position = normalized_x[idx];
+        const double y_position = normalized_x[idx + 1];
+        const double z_position = normalized_x[idx + 2];
+
+        const Eigen::Vector3d position(x_position, y_position, z_position);
+        const Eigen::Vector3d current = pimpl->env.get_UWCurrent(position, t);
+
+        std::cout << "CURRENT DEBUG - body: " << body_name
+              << " current: " << current(0) << ", "
+              << current(1) << ", "
+              << current(2) << std::endl;
+
+        obs.write_before_solver_step(current(0),DataAddressing(std::vector<std::string>(), body_name + "_current_x"));
+        obs.write_before_solver_step(current(1),DataAddressing(std::vector<std::string>(), body_name + "_current_y"));
+        obs.write_before_solver_step(current(2),DataAddressing(std::vector<std::string>(), body_name + "_current_z"));
+    }
     for (auto body:pimpl->bodies)
     {
         pimpl->feed_sum_of_forces(obs, body->get_name());
